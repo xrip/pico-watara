@@ -141,7 +141,7 @@ typedef struct __attribute__((__packed__)) {
     char filename[79];
 } file_item_t;
 
-constexpr int max_files = 500;
+constexpr int max_files = 100;
 file_item_t * fileItems = (file_item_t *)(&SCREEN[0][0] + TEXTMODE_COLS*TEXTMODE_ROWS*2);
 
 int compareFileItems(const void* a, const void* b) {
@@ -682,7 +682,9 @@ void __time_critical_func(render_core)() {
 int frame, frame_cnt = 0;
 int frame_timer_start = 0;
 
-static int audio_buffer[AUDIO_FREQ / 60];
+static int audio_buffer[AUDIO_FREQ / 60] = { 0 };
+static uint8_t buffer[AUDIO_BUFFER_SIZE] = { 0 };
+
 int main() {
     overclock();
 
@@ -710,17 +712,15 @@ int main() {
     i2s_init(&i2s_config);
 
     supervision_init();
-    uint8_t buffer[AUDIO_BUFFER_SIZE];
 
     while (true) {
 
         graphics_set_mode(TEXTMODE_DEFAULT);
         filebrowser(HOME_DIR, "sv,bin");
 
-
         if (supervision_load((uint8_t *)rom, rom_size) ) {
             supervision_set_color_scheme(palette_index);
-            supervision_set_ghosting(ghosting);
+            supervision_set_ghosting(0);
         }
         if (aspect_ratio) {
             graphics_set_offset(80, 40);
@@ -734,7 +734,6 @@ int main() {
         while (!reboot) {
             supervision_exec_ex((uint8_t *)SCREEN, SV_W, 0);
             // for(int x = 0; x <64; x++) graphics_set_palette(x, RGB888(bitmap.pal.color[x][0], bitmap.pal.color[x][1], bitmap.pal.color[x][2]));
-
 
             if ((gamepad1_bits.start && gamepad1_bits.select) || (keyboard_bits.start && keyboard_bits.select)) {
                 menu();
@@ -752,7 +751,6 @@ int main() {
                 }
             }
             tight_loop_contents();
-
             sound_stream_update(buffer, AUDIO_BUFFER_SIZE);
             // process audio
             auto * ptr = (unsigned short *)audio_buffer;
@@ -760,7 +758,6 @@ int main() {
                 *ptr++ = i << (8 + 1);
 
             i2s_dma_write(&i2s_config, (const int16_t *) audio_buffer);
-
         }
 
         reboot = false;

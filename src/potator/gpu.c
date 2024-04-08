@@ -265,7 +265,7 @@ void gpu_set_map_func(SV_MapRGBFunc func)
     if (mapRGB == NULL)
         mapRGB = rgb555;
 }
-#define RGB888(r, g, b) ((r<<16) | (g << 8 ) | b )
+
 void gpu_set_color_scheme(int colorScheme)
 {
     int i;
