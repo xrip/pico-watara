@@ -222,12 +222,12 @@ static void add_ghosting(uint32 scanline, uint8 *backbuffer, uint8 innerx, uint8
                 uint8 innerInd_ = ((screenBufferInnerX[sbInd] + x) & 3) * 2;
                 uint8 c_ = (screenBuffers[sbInd][pixInd] >> innerInd_) & 3;
                 if (c_ > c) {
-                    uint8 r = palettes[paletteIndex][c_ * 3 + 0];
-                    uint8 g = palettes[paletteIndex][c_ * 3 + 1];
-                    uint8 b = palettes[paletteIndex][c_ * 3 + 2];
-                    r =  r + (palettes[paletteIndex][c  * 3 + 0] - r) * i / ghostCount;
-                    g =  g + (palettes[paletteIndex][c  * 3 + 1] - g) * i / ghostCount;
-                    b =  b + (palettes[paletteIndex][c  * 3 + 2] - b) * i / ghostCount;
+                    uint8 r = palettes[paletteIndex][c * 3 + 0];
+                    uint8 g = palettes[paletteIndex][c * 3 + 1];
+                    uint8 b = palettes[paletteIndex][c * 3 + 2];
+                    r += (palettes[paletteIndex][c_ * 3 + 0] * (i+1) / ghostCount) >> 3;
+                    g += (palettes[paletteIndex][c_ * 3 + 1] * (i+1) / ghostCount) >> 3;
+                    b += (palettes[paletteIndex][c_ * 3 + 2] * (i+1) / ghostCount) >> 3;
                     backbuffer[x] = mapRGB(r, g, b);
                     break;
                 }
