@@ -761,6 +761,7 @@ int main() {
         }
 
         reboot = false;
+        supervision_reset();
     }
     __unreachable();
 }
