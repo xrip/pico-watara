@@ -1031,7 +1031,7 @@ static bool __time_critical_func(video_timer_callbackTV)(repeating_timer_t* rt) 
                                     x++;
                                     if (x > graphics_buffer.shift_x && x < graphics_buffer.shift_x + graphics_buffer.
                                         width) {
-                                        color = *input_buffer8++ % 64;
+                                        color = *input_buffer8++;
                                     }
                                     else {
                                         color = 200;

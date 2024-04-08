@@ -78,14 +78,14 @@ void nespad_tick() {
     gamepad1_bits.right = (nespad_state & DPAD_RIGHT) != 0;
 
 
-    if (gamepad1_bits.up) controls_state|=0x08;
-    if (gamepad1_bits.down) controls_state|=0x04;
-    if (gamepad1_bits.left) controls_state|=0x02;
-    if (gamepad1_bits.right) controls_state|=0x01;
-    if (gamepad1_bits.a) controls_state|=0x20;
-    if (gamepad1_bits.b) controls_state|=0x10;
-    if (gamepad1_bits.start) controls_state|=0x80;
-    if (gamepad1_bits.select) controls_state|=0x40;
+    if (gamepad1_bits.up || keyboard_bits.up ) controls_state|=0x08;
+    if (gamepad1_bits.down  || keyboard_bits.down ) controls_state|=0x04;
+    if (gamepad1_bits.left  || keyboard_bits.left ) controls_state|=0x02;
+    if (gamepad1_bits.right  || keyboard_bits.right ) controls_state|=0x01;
+    if (gamepad1_bits.a  || keyboard_bits.a ) controls_state|=0x20;
+    if (gamepad1_bits.b  || keyboard_bits.b ) controls_state|=0x10;
+    if (gamepad1_bits.start  || keyboard_bits.start ) controls_state|=0x80;
+    if (gamepad1_bits.select  || keyboard_bits.select ) controls_state|=0x40;
     // if (gamepad1_bits.down) smsSystem|=INPUT_SOFT_RESET;
     // if (gamepad1_bits.down) smsSystem|=INPUT_HARD_RESET;
     supervision_set_input(controls_state);
