@@ -29,6 +29,7 @@ char __uninitialized_ram(filename[256]);
 static uint32_t __uninitialized_ram(rom_size) = 0;
 int palette_index = SV_COLOR_SCHEME_WATAROO;
 bool aspect_ratio = false;
+int ghosting = 0;
 
 static FATFS fs;
 bool reboot = false;
@@ -512,6 +513,7 @@ bool load() {
 const MenuItem menu_items[] = {
         {"Swap AB <> BA: %s",     ARRAY, &swap_ab,  nullptr, 1, {"NO ",       "YES"}},
         {},
+        { "Ghosting pix: %i ", INT, &ghosting, nullptr, 8 },
         { "Palette: %i ", INT, &palette_index, nullptr, SV_COLOR_SCHEME_COUNT },
 #if VGA
         { "Keep aspect ratio: %s",     ARRAY, &aspect_ratio,  nullptr, 1, {"NO ",       "YES"}},
@@ -629,6 +631,7 @@ void menu() {
         graphics_set_offset(0, 0);
     }
     graphics_set_mode(aspect_ratio ? GRAPHICSMODE_ASPECT : GRAPHICSMODE_DEFAULT);
+    supervision_set_ghosting(ghosting);
 }
 
 /* Renderer loop on Pico's second core */
@@ -717,7 +720,7 @@ int main() {
 
         if (supervision_load((uint8_t *)rom, rom_size) ) {
             supervision_set_color_scheme(palette_index);
-            //supervision_set_ghosting(1);
+            supervision_set_ghosting(ghosting);
         }
         if (aspect_ratio) {
             graphics_set_offset(80, 40);
