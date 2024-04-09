@@ -625,11 +625,15 @@ void menu() {
     }
 
     supervision_set_color_scheme(palette_index);
+#if VGA
     if (aspect_ratio) {
         graphics_set_offset(80, 40);
     } else {
         graphics_set_offset(0, 0);
     }
+#else
+    graphics_set_offset(80, 40);
+#endif
     graphics_set_mode(aspect_ratio ? GRAPHICSMODE_ASPECT : GRAPHICSMODE_DEFAULT);
     supervision_set_ghosting(ghosting);
 }
