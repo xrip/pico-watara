@@ -722,11 +722,17 @@ int main() {
             supervision_set_color_scheme(palette_index);
             supervision_set_ghosting(0);
         }
+
+#if VGA
         if (aspect_ratio) {
             graphics_set_offset(80, 40);
         } else {
             graphics_set_offset(0, 0);
         }
+#else
+        graphics_set_offset(80, 40);
+#endif
+
         graphics_set_mode(aspect_ratio ? GRAPHICSMODE_ASPECT : GRAPHICSMODE_DEFAULT);
 
         start_time = time_us_64();
