@@ -7,7 +7,7 @@
 #include <string.h>
 
 // RGB555 or RGBA5551
-#define RGB555(R,G,B) ((((int)(B))<<10)|(((int)(G))<<5)|(((int)(R)))|(1<<15))
+#define RGB555(R, G, B) (((int)B << 10) | ((int)G << 5) | ((int)R) | ( 1 << 15))
 
 static uint32 rgb555(uint8 r, uint8 g, uint8 b)
 {
@@ -199,7 +199,6 @@ static int paletteIndex;
 #define SB_MAX (SV_GHOSTING_MAX + 1)
 static int ghostCount = 0;
 static uint8 screenBuffers[SB_MAX][SV_H * SV_W / 4];
-static uint8 screenBufferInnerX[SB_MAX];
 
 static void add_ghosting(uint32 scanline, uint8 *backbuffer, uint8 innerx, uint8 size)
 {
@@ -209,31 +208,16 @@ static void add_ghosting(uint32 scanline, uint8 *backbuffer, uint8 innerx, uint8
     uint8 *vram_line = memorymap_getUpperRamPointer() + scanline;
     uint8 x, i, j;
 
-    screenBufferInnerX[curSB] = innerx;
     memset(screenBuffers[curSB] + lineCount * SV_W / 4, 0, SV_W / 4);
     for (j = innerx, x = 0; x < size; x++, j++) {
-        uint8 b = vram_line[j >> 2];
-        uint8 innerInd = (j & 3) * 2;
-        uint8 c = (b >> innerInd) & 3;
         int pixInd = (x + lineCount * SV_W) / 4;
-        if (c != 3) {
-            for (i = 0; i < ghostCount; i++) {
-                uint8 sbInd = (curSB + (SB_MAX - 1) - i) % SB_MAX;
-                uint8 innerInd_ = ((screenBufferInnerX[sbInd] + x) & 3) * 2;
-                uint8 c_ = (screenBuffers[sbInd][pixInd] >> innerInd_) & 3;
-                if (c_ > c) {
-                    uint8 r = palettes[paletteIndex][c * 3 + 0];
-                    uint8 g = palettes[paletteIndex][c * 3 + 1];
-                    uint8 b = palettes[paletteIndex][c * 3 + 2];
-                    r += (palettes[paletteIndex][c_ * 3 + 0] * (i+1) / ghostCount) >> 3;
-                    g += (palettes[paletteIndex][c_ * 3 + 1] * (i+1) / ghostCount) >> 3;
-                    b += (palettes[paletteIndex][c_ * 3 + 2] * (i+1) / ghostCount) >> 3;
-                    backbuffer[x] = mapRGB(r, g, b);
-                    break;
-                }
-            }
+        screenBuffers[curSB][pixInd] = backbuffer[x];
+        for (i = 0; i < ghostCount; i++) {
+            uint8 sbInd = (curSB + (SB_MAX - 1) - i) % SB_MAX;
+            uint8 c = (screenBuffers[sbInd][pixInd] * (i + 1) / ghostCount) >> 1;
+            if (backbuffer[x] < c)
+                backbuffer[x] = c;
         }
-        screenBuffers[curSB][pixInd] |= c << innerInd;
     }
 
     if (lineCount == SV_H - 1)
