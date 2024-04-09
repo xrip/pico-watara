@@ -64,7 +64,7 @@ enum SV_COLOR {
 /*!
  * \sa supervision_set_ghosting()
  */
-#define SV_GHOSTING_MAX 8
+#define SV_GHOSTING_MAX 6
  /*!
   * \sa supervision_update_sound()
   */
