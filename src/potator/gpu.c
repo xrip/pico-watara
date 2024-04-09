@@ -1,3 +1,4 @@
+#include "pico/platform.h"
 #include "gpu.h"
 
 #include "memorymap.h"
@@ -266,7 +267,7 @@ void gpu_set_color_scheme(int colorScheme)
     paletteIndex = colorScheme;
 }
 
-void gpu_render_scanline(uint32 scanline, uint8 *backbuffer, uint8 innerx, uint8 size)
+void __time_critical_func(gpu_render_scanline)(uint32 scanline, uint8 *backbuffer, uint8 innerx, uint8 size)
 {
     uint8 *vram_line = memorymap_getUpperRamPointer() + scanline;
     uint8 x, j = innerx, b = 0;
