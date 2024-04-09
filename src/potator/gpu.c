@@ -198,31 +198,33 @@ static int paletteIndex;
 
 #define SB_MAX (SV_GHOSTING_MAX + 1)
 static int ghostCount = 0;
-static uint8 screenBuffers[SB_MAX][SV_H * SV_W / 4];
+static uint8 screenBuffers[SB_MAX][SV_H][SV_W];
 
 static void add_ghosting(uint32 scanline, uint8 *backbuffer, uint8 innerx, uint8 size)
 {
     static int curSB = 0;
-    static int lineCount = 0;
+    static int line = 0;
 
-    uint8 *vram_line = memorymap_getUpperRamPointer() + scanline;
-    uint8 x, i, j;
+    uint8* saveTo = &screenBuffers[curSB][line][0];
+    memcpy(saveTo, backbuffer, SV_W);
 
-    memset(screenBuffers[curSB] + lineCount * SV_W / 4, 0, SV_W / 4);
-    for (j = innerx, x = 0; x < size; x++, j++) {
-        int pixInd = (x + lineCount * SV_W) / 4;
-        screenBuffers[curSB][pixInd] = backbuffer[x];
-        for (i = 0; i < ghostCount; i++) {
-            uint8 sbInd = (curSB + (SB_MAX - 1) - i) % SB_MAX;
-            uint8 c = (screenBuffers[sbInd][pixInd] * (i + 1) / ghostCount) >> 1;
+    for (int i = 1; i < ghostCount; i++) {
+        int sbInd = curSB - i; // 0 -> -1; 1 -> 0
+        while (sbInd < 0) sbInd += ghostCount + 1; // -1 -> 1
+        for (int x = 0; x < size; ++x) {
+            uint8 c = (screenBuffers[sbInd][line][x] * ghostCount / (ghostCount + 1)) & 0x03;
             if (backbuffer[x] < c)
                 backbuffer[x] = c;
         }
     }
 
-    if (lineCount == SV_H - 1)
-        curSB = (curSB + 1) % SB_MAX;
-    lineCount = (lineCount + 1) % SV_H;
+    line++;
+    if (line >= SV_H) {
+        line = 0;
+        curSB++;
+        if (curSB >= SB_MAX)
+            curSB = 0;
+    }
 }
 
 void gpu_init(void)
