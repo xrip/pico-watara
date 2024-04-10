@@ -514,7 +514,13 @@ bool load() {
     return true;
 }
 
-
+#if HDMI
+static int graphics_buffer_shift_x = 20;
+static int graphics_buffer_shift_y = 20;
+#else
+static int graphics_buffer_shift_x = 0;
+static int graphics_buffer_shift_y = 0;
+#endif
 
 const MenuItem menu_items[] = {
         {"Swap AB <> BA: %s",     ARRAY, &swap_ab,  nullptr, 1, {"NO ",       "YES"}},
@@ -524,6 +530,8 @@ const MenuItem menu_items[] = {
 #if VGA
         { "Keep aspect ratio: %s",     ARRAY, &aspect_ratio,  nullptr, 1, {"NO ",       "YES"}},
 #endif
+        { "Shift X: %i ", INT, &graphics_buffer_shift_x, nullptr, 100 },
+        { "Shift Y: %i ", INT, &graphics_buffer_shift_y, nullptr, 100 },
     //{ "Player 1: %s",        ARRAY, &player_1_input, 2, { "Keyboard ", "Gamepad 1", "Gamepad 2" }},
     //{ "Player 2: %s",        ARRAY, &player_2_input, 2, { "Keyboard ", "Gamepad 1", "Gamepad 2" }},
     {},
@@ -639,7 +647,7 @@ void menu() {
     if (aspect_ratio) {
         graphics_set_offset(80, 40);
     } else {
-        graphics_set_offset(0, 0);
+        graphics_set_offset(graphics_buffer_shift_x, graphics_buffer_shift_y);
     }
     graphics_set_mode(aspect_ratio ? GRAPHICSMODE_ASPECT : GRAPHICSMODE_DEFAULT);
     supervision_set_ghosting(ghosting);
