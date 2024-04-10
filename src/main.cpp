@@ -28,8 +28,8 @@ static const uintptr_t rom = XIP_BASE + FLASH_TARGET_OFFSET;
 char __uninitialized_ram(filename[256]);
 static uint32_t __uninitialized_ram(rom_size) = 0;
 int palette_index = SV_COLOR_SCHEME_WATAROO;
-bool aspect_ratio = false;
-int ghosting = 0;
+bool aspect_ratio = true;
+int ghosting = 8;
 
 static FATFS fs;
 bool reboot = false;
@@ -724,7 +724,7 @@ int main() {
 
         if (supervision_load((uint8_t *)rom, rom_size) ) {
             supervision_set_color_scheme(palette_index);
-            supervision_set_ghosting(0);
+        //    supervision_set_ghosting(0);
         }
 
 #if VGA
