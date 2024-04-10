@@ -28,7 +28,12 @@ static const uintptr_t rom = XIP_BASE + FLASH_TARGET_OFFSET;
 char __uninitialized_ram(filename[256]);
 static uint32_t __uninitialized_ram(rom_size) = 0;
 int palette_index = SV_COLOR_SCHEME_WATAROO;
-bool aspect_ratio = true;
+bool aspect_ratio =
+#ifdef HDMI 
+false;
+#else
+true;
+#endif
 int ghosting = 8;
 
 static FATFS fs;
@@ -107,14 +112,15 @@ __not_in_flash_func(process_kbd_report)(hid_keyboard_report_t const* report, hid
         printf("%2.2X", i);
     printf("\r\n");
      */
-    keyboard_bits.start = isInReport(report, HID_KEY_ENTER);
-    keyboard_bits.select = isInReport(report, HID_KEY_BACKSPACE);
-    keyboard_bits.a = isInReport(report, HID_KEY_Z);
-    keyboard_bits.b = isInReport(report, HID_KEY_X);
-    keyboard_bits.up = isInReport(report, HID_KEY_ARROW_UP);
-    keyboard_bits.down = isInReport(report, HID_KEY_ARROW_DOWN);
-    keyboard_bits.left = isInReport(report, HID_KEY_ARROW_LEFT);
-    keyboard_bits.right = isInReport(report, HID_KEY_ARROW_RIGHT);
+    bool esc = isInReport(report, HID_KEY_ESCAPE);
+    keyboard_bits.start = isInReport(report, HID_KEY_ENTER) || isInReport(report, HID_KEY_9);
+    keyboard_bits.select = esc || isInReport(report, HID_KEY_BACKSPACE) || isInReport(report, HID_KEY_0);
+    keyboard_bits.a = esc || isInReport(report, HID_KEY_Z) || isInReport(report, HID_KEY_O);
+    keyboard_bits.b = isInReport(report, HID_KEY_X) || isInReport(report, HID_KEY_P);
+    keyboard_bits.up = isInReport(report, HID_KEY_ARROW_UP) || isInReport(report, HID_KEY_W);
+    keyboard_bits.down = isInReport(report, HID_KEY_ARROW_DOWN) || isInReport(report, HID_KEY_S);
+    keyboard_bits.left = isInReport(report, HID_KEY_ARROW_LEFT) || isInReport(report, HID_KEY_A);
+    keyboard_bits.right = isInReport(report, HID_KEY_ARROW_RIGHT) || isInReport(report, HID_KEY_D);
     //-------------------------------------------------------------------------
 }
 
@@ -546,6 +552,11 @@ void menu() {
     uint current_item = 0;
 
     while (!exit) {
+        if (gamepad1_bits.a && gamepad1_bits.select || keyboard_bits.a && keyboard_bits.select) {
+            gamepad1_bits.a, gamepad1_bits.select, keyboard_bits.a, keyboard_bits.select = false;
+            exit = true;
+            break;
+        }
         for (int i = 0; i < MENU_ITEMS_NUMBER; i++) {
             uint8_t y = i + (TEXTMODE_ROWS - MENU_ITEMS_NUMBER >> 1);
             uint8_t x = TEXTMODE_COLS / 2 - 10;
@@ -621,7 +632,7 @@ void menu() {
                 current_item--;
         }
 
-        sleep_ms(125);
+        sleep_ms(100);
     }
 
     supervision_set_color_scheme(palette_index);
