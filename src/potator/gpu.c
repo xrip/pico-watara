@@ -194,38 +194,26 @@ static const uint8 palettes[SV_COLOR_SCHEME_COUNT][12] = {
 },
 };
 
-uint32 watara_palette[4];
+//uint32 watara_palette[4];
 static int paletteIndex;
 
-#define SB_MAX (SV_GHOSTING_MAX + 1)
-static int ghostCount = 0;
-static uint8 screenBuffers[SB_MAX][SV_H][SV_W];
+static int ghostCount = 4;
+static uint8 screenBuffer8[SV_H][SV_W] = { 0 };
 
 static void add_ghosting(uint32 scanline, uint8 *backbuffer, uint8 innerx, uint8 size)
 {
-    static int curSB = 0;
     static int line = 0;
-
-    uint8* saveTo = &screenBuffers[curSB][line][0];
-    memcpy(saveTo, backbuffer, SV_W);
-
-    for (int i = 1; i < ghostCount; i++) {
-        int sbInd = curSB - i; // 0 -> -1; 1 -> 0
-        while (sbInd < 0) sbInd += ghostCount + 1; // -1 -> 1
-        for (int x = 0; x < size; ++x) {
-            uint8 c = (screenBuffers[sbInd][line][x] * ghostCount / (ghostCount + 1)) & 0x03;
-            if (backbuffer[x] < c)
-                backbuffer[x] = c;
-        }
+    uint8* pln = screenBuffer8[line];
+    for (size_t x = 0; x < size; ++x) {
+        int c8 = pln[x] * (ghostCount - 1) / ghostCount; // prev. state in 8 bit format (reduced to 1/gh)
+        int c2 = backbuffer[x]; // curr. state in 2 bits format
+        int c8n = c2 << 6; // new state in 8 bit format
+        if (c8n < c8) c8n = c8;
+        pln[x] = c8n; // save it to next step
+        backbuffer[x] = c8n >> 6; // convert to 2-bits
     }
 
-    line++;
-    if (line >= SV_H) {
-        line = 0;
-        curSB++;
-        if (curSB >= SB_MAX)
-            curSB = 0;
-    }
+    line = (line + 1) % SV_H;
 }
 
 void gpu_init(void)
@@ -299,25 +287,4 @@ void gpu_set_ghosting(int frameCount)
         ghostCount = SV_GHOSTING_MAX;
     else
         ghostCount = frameCount;
-
-    if (ghostCount != 0) {
-        if (screenBuffers[0] == NULL)
-	{
-//            for (i = 0; i < SB_MAX; i++)
-//	    {
-//                screenBuffers[i] = malloc(SV_H * SV_W / 4);
-//                if (screenBuffers[i] == NULL)
-//                    return;
-//            }
-        }
-        for (i = 0; i < SB_MAX; i++)
-            memset(screenBuffers[i], 0, SV_H * SV_W / 4);
-    }
-    else {
-        for (i = 0; i < SB_MAX; i++) {
-//            free(screenBuffers[i]);
-//            screenBuffers[i] = NULL;
-        }
-    }
 }
-
