@@ -478,7 +478,7 @@ bool overclock() {
 bool save() {
     char pathname[255];
     const size_t size = supervision_save_state_buf_size();
-    uint8_t data[size];
+    auto * data = (uint8_t *)(malloc(size));
 
     if (save_slot) {
         sprintf(pathname, "%s\\%s_%d.save",  HOME_DIR, filename, save_slot);
@@ -495,7 +495,7 @@ bool save() {
     supervision_save_state_buf((uint8*)data, (uint32)size);
     f_write(&fd, data, size, &bytes_writen);
     f_close(&fd);
-
+    free(data);
     return true;
 }
 
