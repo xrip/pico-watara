@@ -269,6 +269,7 @@ void __time_critical_func(gpu_render_scanline)(uint32 scanline, uint8 *backbuffe
         b = *vram_line++;
         b >>= (j & 3) * 2;
     }
+#pragma GCC unroll 320
     for (x = 0; x < size; x++, j++)
     {
         if (!(j & 3)) {

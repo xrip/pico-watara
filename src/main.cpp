@@ -28,7 +28,7 @@ static const uintptr_t rom = XIP_BASE + FLASH_TARGET_OFFSET;
 char __uninitialized_ram(filename[256]);
 static uint32_t __uninitialized_ram(rom_size) = 0;
 int palette_index = SV_COLOR_SCHEME_WATAROO;
-bool aspect_ratio = true;
+bool aspect_ratio = false;
 int ghosting = 8;
 
 static FATFS fs;
@@ -111,7 +111,7 @@ __not_in_flash_func(process_kbd_report)(hid_keyboard_report_t const* report, hid
     keyboard_bits.select = isInReport(report, HID_KEY_BACKSPACE) || isInReport(report, HID_KEY_ESCAPE);
 
     keyboard_bits.a = isInReport(report, HID_KEY_Z) || isInReport(report, HID_KEY_O);
-    keyboard_bits.b = isInReport(report, HID_KEY_X) || isInReport(report, HID_KEY_P;
+    keyboard_bits.b = isInReport(report, HID_KEY_X) || isInReport(report, HID_KEY_P);
 
     keyboard_bits.up = isInReport(report, HID_KEY_ARROW_UP) || isInReport(report, HID_KEY_W);
     keyboard_bits.down = isInReport(report, HID_KEY_ARROW_DOWN) || isInReport(report, HID_KEY_S);
@@ -609,6 +609,9 @@ void menu() {
             }
             draw_text(result, x, y, color, bg_color);
         }
+
+        if (gamepad1_bits.b || (keyboard_bits.select && !keyboard_bits.start))
+            exit = true;
 
         if (gamepad1_bits.down || keyboard_bits.down) {
             current_item = (current_item + 1) % MENU_ITEMS_NUMBER;

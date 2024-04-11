@@ -255,7 +255,7 @@ void __inline __scratch_y("refresh_lcd") refresh_lcd() {
             // st7789_dma_pixels(graphics_buffer, i);
             for (int y = 0; y < graphics_buffer_height; y++) {
                 for (int x = 0; x < graphics_buffer_width; x++) {
-                    st7789_lcd_put_pixel(pio, sm, palette[*bitmap++]);
+                    st7789_lcd_put_pixel(pio, sm, palette[*bitmap++ >> 6]);
                 }
                 for (int x = 0; x < graphics_buffer_shift_x; x++)
                     st7789_lcd_put_pixel(pio, sm, 0x00);

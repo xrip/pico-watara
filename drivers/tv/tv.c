@@ -493,7 +493,7 @@ static void __scratch_x("tv_main_loop") main_video_loopTV() {
                             }
 
                             for (uint x = graphics_buffer.width; x--;) {
-                                *output_buffer++ = *input_buffer8 < 240 ? *input_buffer8 : 0;
+                                *output_buffer++ = *input_buffer8 < 240 ? (*input_buffer8 >> 6) : 0;
                                 input_buffer8++;
                             }
 
