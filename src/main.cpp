@@ -27,17 +27,31 @@ static const uintptr_t rom = XIP_BASE + FLASH_TARGET_OFFSET;
 
 char __uninitialized_ram(filename[256]);
 static uint32_t __uninitialized_ram(rom_size) = 0;
-int palette_index = SV_COLOR_SCHEME_WATAROO;
-bool aspect_ratio = false;
-int ghosting = 8;
 
 static FATFS fs;
 bool reboot = false;
-bool frameskip = true;
-bool limit_fps = false;
+bool limit_fps = true;
 semaphore vga_start_semaphore;
 
 uint8_t SCREEN[SV_H][SV_W];
+
+typedef struct __attribute__((__packed__)) {
+    uint8_t version;
+    bool swap_ab;
+    bool aspect_ratio;
+    uint8_t ghosting;
+    uint8_t palette;
+    uint8_t save_slot;
+} SETTINGS;
+
+SETTINGS settings = {
+        .version = 1,
+        .swap_ab = false,
+        .aspect_ratio = false,
+        .ghosting = 8,
+        .palette = SV_COLOR_SCHEME_WATAROO,
+        .save_slot = 0,
+};
 
 struct input_bits_t {
     bool a: true;
@@ -61,7 +75,7 @@ void nespad_tick() {
 
     uint8 controls_state = 0;
 
-    if (swap_ab) {
+    if (settings.swap_ab) {
         gamepad1_bits.b = (nespad_state & DPAD_A) != 0;
         gamepad1_bits.a = (nespad_state & DPAD_B) != 0;
     } else {
@@ -512,19 +526,43 @@ bool load() {
 
 
 
+
+void load_config() {
+    FIL file;
+    char pathname[256];
+    sprintf(pathname, "%s\\emulator.cfg", HOME_DIR);
+
+    if (FR_OK == f_mount(&fs, "", 1) && FR_OK == f_open(&file, pathname, FA_READ)) {
+        UINT bytes_read;
+        f_read(&file, &settings, sizeof(settings), &bytes_read);
+        f_close(&file);
+    }
+}
+
+void save_config() {
+    FIL file;
+    char pathname[256];
+    sprintf(pathname, "%s\\emulator.cfg", HOME_DIR);
+
+    if (FR_OK == f_mount(&fs, "", 1) && FR_OK == f_open(&file, pathname, FA_CREATE_ALWAYS | FA_WRITE)) {
+        UINT bytes_writen;
+        f_write(&file, &settings, sizeof(settings), &bytes_writen);
+        f_close(&file);
+    }
+}
 const MenuItem menu_items[] = {
-        {"Swap AB <> BA: %s",     ARRAY, &swap_ab,  nullptr, 1, {"NO ",       "YES"}},
+        {"Swap AB <> BA: %s",     ARRAY, &settings.swap_ab,  nullptr, 1, {"NO ",       "YES"}},
         {},
-        { "Ghosting pix: %i ", INT, &ghosting, nullptr, 8 },
-        { "Palette: %i ", INT, &palette_index, nullptr, SV_COLOR_SCHEME_COUNT },
+        { "Ghosting pix: %i ", INT, &settings.ghosting, nullptr, 8 },
+        { "Palette: %i ", INT, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT },
 #if VGA
-        { "Keep aspect ratio: %s",     ARRAY, &aspect_ratio,  nullptr, 1, {"NO ",       "YES"}},
+        { "Keep aspect ratio: %s",     ARRAY, &settings.aspect_ratio,  nullptr, 1, {"NO ",       "YES"}},
 #endif
     //{ "Player 1: %s",        ARRAY, &player_1_input, 2, { "Keyboard ", "Gamepad 1", "Gamepad 2" }},
     //{ "Player 2: %s",        ARRAY, &player_2_input, 2, { "Keyboard ", "Gamepad 1", "Gamepad 2" }},
     {},
-    { "Save state: %i", INT, &save_slot, &save, 5 },
-    { "Load state: %i", INT, &save_slot, &load, 5 },
+    { "Save state: %i", INT, &settings.save_slot, &save, 5 },
+    { "Load state: %i", INT, &settings.save_slot, &load, 5 },
 {},
 {
     "Overclocking: %s MHz", ARRAY, &frequency_index, &overclock, count_of(frequencies) - 1,
@@ -629,18 +667,21 @@ void menu() {
         sleep_ms(125);
     }
 
-    supervision_set_color_scheme(palette_index);
+    supervision_set_color_scheme(settings.palette);
 #if VGA
-    if (aspect_ratio) {
+    if (settings.aspect_ratio) {
         graphics_set_offset(80, 40);
     } else {
         graphics_set_offset(0, 0);
     }
+    graphics_set_mode(settings.aspect_ratio ? GRAPHICSMODE_ASPECT : GRAPHICSMODE_DEFAULT);
 #else
     graphics_set_offset(80, 40);
+    graphics_set_mode(GRAPHICSMODE_DEFAULT);
 #endif
-    graphics_set_mode(aspect_ratio ? GRAPHICSMODE_ASPECT : GRAPHICSMODE_DEFAULT);
-    supervision_set_ghosting(ghosting);
+
+    supervision_set_ghosting(settings.ghosting);
+    save_config();
 }
 
 /* Renderer loop on Pico's second core */
@@ -712,7 +753,7 @@ int main() {
         gpio_put(PICO_DEFAULT_LED_PIN, false);
     }
 
-
+    load_config();
 
     i2s_config = i2s_get_default_config();
     i2s_config.sample_freq = AUDIO_FREQ;
@@ -728,21 +769,21 @@ int main() {
         filebrowser(HOME_DIR, "sv,bin");
 
         if (supervision_load((uint8_t *)rom, rom_size) ) {
-            supervision_set_color_scheme(palette_index);
+            supervision_set_color_scheme(settings.palette);
         //    supervision_set_ghosting(0);
         }
 
 #if VGA
-        if (aspect_ratio) {
+        if (settings.aspect_ratio) {
             graphics_set_offset(80, 40);
         } else {
             graphics_set_offset(0, 0);
         }
+        graphics_set_mode(settings.aspect_ratio ? GRAPHICSMODE_ASPECT : GRAPHICSMODE_DEFAULT);
 #else
         graphics_set_offset(80, 40);
+        graphics_set_mode(GRAPHICSMODE_DEFAULT);
 #endif
-
-        graphics_set_mode(aspect_ratio ? GRAPHICSMODE_ASPECT : GRAPHICSMODE_DEFAULT);
 
         start_time = time_us_64();
 
