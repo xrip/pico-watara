@@ -116,7 +116,7 @@ void __time_critical_func() dma_handler_VGA() {
         case CGA_320x200x4:
         case CGA_640x200x2:
         case TGA_320x200x16:
-        case EGA_320x200x16x4:
+        case GRAPHICSMODE_3X3:
         case GRAPHICSMODE_ASPECT:
             line_number = screen_line / 2;
             if (screen_line % 2) return;
@@ -298,17 +298,13 @@ void __time_critical_func() dma_handler_VGA() {
                 input_buffer_8bit++;
             }
             break;
-        case EGA_320x200x16x4: {
-            input_buffer_8bit = input_buffer + y * 40;
-            for (int x = 0; x < 40; x++) {
-                for (int bit = 7; bit--;) {
-                    uint8_t color = *input_buffer_8bit >> bit & 1;
-                    color |= (*(input_buffer_8bit + 16000) >> bit & 1) << 1;
-                    color |= (*(input_buffer_8bit + 32000) >> bit & 1) << 2;
-                    color |= (*(input_buffer_8bit + 48000) >> bit & 1) << 3;
-                    *output_buffer_16bit++ = current_palette[color];
-                }
-                input_buffer_8bit++;
+        case GRAPHICSMODE_3X3: {
+            output_buffer_8bit = (uint8_t *)output_buffer_16bit;
+            input_buffer_8bit = input_buffer + y * width;
+            for (int i = width; i--;) {
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit] & 0xff;
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit] & 0xff;
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit++] &0xff;
             }
             break;
         }
@@ -388,7 +384,7 @@ void graphics_set_mode(enum graphics_mode_t mode) {
         case CGA_160x200x16:
         case GRAPHICSMODE_DEFAULT:
         case GRAPHICSMODE_ASPECT:
-        case EGA_320x200x16x4:
+        case GRAPHICSMODE_3X3:
         case TGA_320x200x16:
 
             TMPL_LINE8 = 0b11000000;
