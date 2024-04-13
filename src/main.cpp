@@ -465,7 +465,6 @@ typedef struct __attribute__((__packed__)) {
     char value_list[15][10];
 } MenuItem;
 
-int save_slot = 0;
 uint16_t frequencies[] = { 378, 396, 404, 408, 412, 416, 420, 424, 432 };
 uint8_t frequency_index = 0;
 
@@ -480,8 +479,8 @@ bool save() {
     const size_t size = supervision_save_state_buf_size();
     auto * data = (uint8_t *)(malloc(size));
 
-    if (save_slot) {
-        sprintf(pathname, "%s\\%s_%d.save",  HOME_DIR, filename, save_slot);
+    if (settings.save_slot > 0) {
+        sprintf(pathname, "%s\\%s_%d.save",  HOME_DIR, filename, settings.save_slot);
     }
     else {
         sprintf(pathname, "%s\\%s.save",  HOME_DIR, filename);
@@ -504,8 +503,8 @@ bool load() {
     const size_t size = supervision_save_state_buf_size();
     auto * data = (uint8_t *)(malloc(size));
 
-    if (save_slot) {
-        sprintf(pathname, "%s\\%s_%d.save",  HOME_DIR, filename, save_slot);
+    if (settings.save_slot > 0) {
+        sprintf(pathname, "%s\\%s_%d.save",  HOME_DIR, filename, settings.save_slot);
     }
     else {
         sprintf(pathname, "%s\\%s.save",  HOME_DIR, filename);
@@ -550,6 +549,31 @@ void save_config() {
         f_close(&file);
     }
 }
+#if SOFTTV
+typedef struct tv_out_mode_t {
+    // double color_freq;
+    float color_index;
+    COLOR_FREQ_t c_freq;
+    enum graphics_mode_t mode_bpp;
+    g_out_TV_t tv_system;
+    NUM_TV_LINES_t N_lines;
+    bool cb_sync_PI_shift_lines;
+    bool cb_sync_PI_shift_half_frame;
+} tv_out_mode_t;
+extern tv_out_mode_t tv_out_mode;
+
+bool color_mode=true;
+bool toggle_color() {
+    color_mode=!color_mode;
+    if(color_mode) {
+        tv_out_mode.color_index= 1.0f;
+    } else {
+        tv_out_mode.color_index= 0.0f;
+    }
+
+    return true;
+}
+#endif
 const MenuItem menu_items[] = {
         {"Swap AB <> BA: %s",     ARRAY, &settings.swap_ab,  nullptr, 1, {"NO ",       "YES"}},
         {},
@@ -557,6 +581,15 @@ const MenuItem menu_items[] = {
         { "Palette: %i ", INT, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT },
 #if VGA
         { "Keep aspect ratio: %s",     ARRAY, &settings.aspect_ratio,  nullptr, 1, {"NO ",       "YES"}},
+#endif
+#if SOFTTV
+        { "" },
+        { "TV system %s", ARRAY, &tv_out_mode.tv_system, nullptr, 1, { "PAL ", "NTSC" } },
+        { "TV Lines %s", ARRAY, &tv_out_mode.N_lines, nullptr, 3, { "624", "625", "524", "525" } },
+        { "Freq %s", ARRAY, &tv_out_mode.c_freq, nullptr, 1, { "3.579545", "4.433619" } },
+        { "Colors: %s", ARRAY, &color_mode, &toggle_color, 1, { "NO ", "YES" } },
+        { "Shift lines %s", ARRAY, &tv_out_mode.cb_sync_PI_shift_lines, nullptr, 1, { "NO ", "YES" } },
+        { "Shift half frame %s", ARRAY, &tv_out_mode.cb_sync_PI_shift_half_frame, nullptr, 1, { "NO ", "YES" } },
 #endif
     //{ "Player 1: %s",        ARRAY, &player_1_input, 2, { "Keyboard ", "Gamepad 1", "Gamepad 2" }},
     //{ "Player 2: %s",        ARRAY, &player_2_input, 2, { "Keyboard ", "Gamepad 1", "Gamepad 2" }},
