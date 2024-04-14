@@ -38,7 +38,7 @@ tv_out_mode_t tv_out_mode = {
         .color_index = 1.0, //0-1
         .cb_sync_PI_shift_lines = false,
         .cb_sync_PI_shift_half_frame = true
-}
+};
 
 //программы PIO
 //программа видеовывода
