@@ -1,3 +1,5 @@
+#pragma GCC optimize("Ofast")
+#include "pico/platform.h"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -70,7 +72,7 @@ BOOL supervision_load(const uint8 *rom, uint32 romSize)
     return TRUE;
 }
 
-void supervision_exec_ex(uint8 *backbuffer, int16 backbufferWidth, BOOL skipFrame)
+void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, int16 backbufferWidth, BOOL skipFrame)
 {
     uint32 i, scan;
     uint8 *regs = memorymap_getRegisters();

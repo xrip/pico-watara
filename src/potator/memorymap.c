@@ -37,7 +37,7 @@ void memorymap_set_dma_finished(void)
     check_irq();
 }
 
-void memorymap_set_timer_shot(void)
+inline void memorymap_set_timer_shot(void)
 {
     timer_shot = TRUE;
     check_irq();

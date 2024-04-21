@@ -578,7 +578,7 @@ const MenuItem menu_items[] = {
         {"Swap AB <> BA: %s",     ARRAY, &settings.swap_ab,  nullptr, 1, {"NO ",       "YES"}},
         {},
         { "Ghosting pix: %i ", INT, &settings.ghosting, nullptr, 8 },
-        { "Palette: %i ", INT, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT },
+        { "Palette: %i ", INT, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT-1 },
 #if VGA
         { "Keep aspect ratio: %s",     ARRAY, &settings.aspect_ratio,  nullptr, 1, {"NO ",       "YES"}},
 #endif
@@ -768,7 +768,7 @@ int frame_timer_start = 0;
 static int audio_buffer[AUDIO_FREQ / 60] = { 0 };
 static uint8_t buffer[AUDIO_BUFFER_SIZE] = { 0 };
 
-int main() {
+int __time_critical_func(main)() {
     overclock();
 
     sem_init(&vga_start_semaphore, 0, 1);

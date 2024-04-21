@@ -1,3 +1,5 @@
+#pragma GCC optimize("Ofast")
+#include "pico/platform.h"
 #include "timer.h"
 
 #include "memorymap.h"
@@ -21,7 +23,7 @@ void timer_write(uint8 data)
     timer_activated = TRUE;
 }
 
-void timer_exec(uint32 cycles)
+void __time_critical_func(timer_exec)(uint32 cycles)
 {
     if (timer_activated) {
         timer_cycles -= cycles;
