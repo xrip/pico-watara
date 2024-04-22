@@ -9,7 +9,7 @@ extern "C" {
 #include <potator/supervision.h>
 #include "potator/sound.h"
 }
-
+#include "frame.h"
 #include <graphics.h>
 #include "audio.h"
 
@@ -33,7 +33,7 @@ bool reboot = false;
 bool limit_fps = true;
 semaphore vga_start_semaphore;
 
-uint8_t SCREEN[SV_H][SV_W];
+uint8_t SCREEN[200][240];
 
 typedef struct __attribute__((__packed__)) {
     uint8_t version;
@@ -727,7 +727,7 @@ void __time_critical_func(render_core)() {
     graphics_init();
 
     const auto buffer = (uint8_t *)SCREEN;
-    graphics_set_buffer(buffer, SV_W, SV_H);
+    graphics_set_buffer(buffer, 240, 200);
     graphics_set_textbuffer(buffer);
     graphics_set_bgcolor(0x000000);
     graphics_set_offset(0, 0);
@@ -796,6 +796,7 @@ int __time_critical_func(main)() {
 
     supervision_init();
 
+
     while (true) {
 
         graphics_set_mode(TEXTMODE_DEFAULT);
@@ -803,25 +804,34 @@ int __time_critical_func(main)() {
 
         if (supervision_load((uint8_t *)rom, rom_size) ) {
             supervision_set_color_scheme(settings.palette);
-        //    supervision_set_ghosting(0);
+            supervision_set_ghosting(0);
         }
 
 #if VGA
-        if (settings.aspect_ratio) {
-            graphics_set_offset(80, 40);
-        } else {
-            graphics_set_offset(0, 0);
-        }
-        graphics_set_mode(settings.aspect_ratio ? GRAPHICSMODE_ASPECT : GRAPHICSMODE_DEFAULT);
+//        if (settings.aspect_ratio) {
+//            graphics_set_offset(80, 40);
+//        } else {
+//            graphics_set_offset(0, 0);
+//        }
+        graphics_set_offset(40, 20);
+        graphics_set_mode(GRAPHICSMODE_ASPECT);
+//        graphics_set_mode(settings.aspect_ratio ? GRAPHICSMODE_ASPECT : GRAPHICSMODE_DEFAULT);
 #else
         graphics_set_offset(80, 40);
         graphics_set_mode(GRAPHICSMODE_DEFAULT);
 #endif
+        for (int i = 0; i<8*4; i+=4) {
+            graphics_set_palette(200+(i/4), RGB888((frame_colors[i+2]),(frame_colors[i+1]),(frame_colors[i])));
+        }
 
+        memcpy(SCREEN, (void *)frame_map, sizeof(frame_map));
+//        while (1) {
+//
+//        };
         start_time = time_us_64();
 
         while (!reboot) {
-            supervision_exec_ex((uint8_t *)SCREEN, SV_W, 0);
+            supervision_exec_ex((uint8_t *)SCREEN+240*20, 240, 0);
             // for(int x = 0; x <64; x++) graphics_set_palette(x, RGB888(bitmap.pal.color[x][0], bitmap.pal.color[x][1], bitmap.pal.color[x][2]));
 
             if ((gamepad1_bits.start && gamepad1_bits.select) || (keyboard_bits.start && keyboard_bits.select)) {
