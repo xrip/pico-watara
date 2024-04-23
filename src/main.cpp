@@ -462,7 +462,7 @@ typedef struct __attribute__((__packed__)) {
     const void* value;
     menu_callback_t callback;
     uint8_t max_value;
-    char value_list[15][10];
+    char value_list[45][20];
 } MenuItem;
 
 uint16_t frequencies[] = { 378, 396, 404, 408, 412, 416, 420, 424, 432 };
@@ -578,7 +578,38 @@ const MenuItem menu_items[] = {
         {"Swap AB <> BA: %s",     ARRAY, &settings.swap_ab,  nullptr, 1, {"NO ",       "YES"}},
         {},
         { "Ghosting pix: %i ", INT, &settings.ghosting, nullptr, 8 },
-        { "Palette: %i ", INT, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT-1 },
+        { "Palette: %s ", ARRAY, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT-1, {
+                  "DEFAULT          "
+                , "AMBER            "
+                , "GREEN            "
+                , "BLUE             "
+                , "BGB              "
+                , "WATAROO          "
+                , "GB_DMG           "
+                , "GB_POCKET        "
+                , "GB_LIGHT         "
+                , "BLOSSOM_PINK     "
+                , "BUBBLES_BLUE     "
+                , "BUTTERCUP_GREEN  "
+                , "DIGIVICE         "
+                , "GAME_COM         "
+                , "GAMEKING         "
+                , "GAME_MASTER      "
+                , "GOLDEN_WILD      "
+                , "GREENSCALE       "
+                , "HOKAGE_ORANGE    "
+                , "LABO_FAWN        "
+                , "SUPER_SAIYAN     "
+                , "MICROVISION      "
+                , "MILLION_LIVE_GOLD"
+                , "ODYSSEY_GOLD     "
+                , "SHINY_SKY_BLUE   "
+                , "SLIME_BLUE       "
+                , "TI_83            "
+                , "TRAVEL_WOOD      "
+                , "VIRTUAL_BOY      "
+                , "TV-LINK          "
+         }},
 #if VGA
         { "Keep aspect ratio: %s",     ARRAY, &settings.aspect_ratio,  nullptr, 1, {"NO ",       "YES"}},
 #endif
