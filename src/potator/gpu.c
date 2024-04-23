@@ -283,9 +283,9 @@ void __time_critical_func(gpu_render_scanline)(uint32 scanline, uint8 *backbuffe
         if (!(j & 3)) {
             b = *(vram_line++);
         }
-        uint8 c2 = b & 3; // curr. state in 2 bits format
+        uint8 color = b & 3; // curr. state in 2 bits format
         int c8 = ghostCount ? backbuffer[x] * (ghostCount - 1) / ghostCount : 0; // prev. state in 8 bit format (reduced to 1/gh)
-        int c8n = c2 << 6; // new state in 8 bit format
+        int c8n = color << 4; // new state in 8 bit format
         if (c8n < c8) c8n = c8;
         // save it to next step
         backbuffer[x] = c8n;

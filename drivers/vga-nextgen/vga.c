@@ -311,7 +311,7 @@ void __time_critical_func() dma_handler_VGA() {
         case GRAPHICSMODE_DEFAULT:
             input_buffer_8bit = input_buffer + y * width;
             for (int i = width; i--;) {
-                uint8_t t = *input_buffer_8bit++ >> 6;
+                uint8_t t = *input_buffer_8bit++ >> 4;
                 *output_buffer_16bit++ = current_palette[t];
                 *output_buffer_16bit++ = current_palette[t];
             }
@@ -319,14 +319,7 @@ void __time_critical_func() dma_handler_VGA() {
         case GRAPHICSMODE_ASPECT:
             input_buffer_8bit = input_buffer + y * width;
             for (int x = 0; x< width; x++) {
-                 uint8_t  color = *input_buffer_8bit++;
-                if (
-                        (y>= 20 && y < graphics_buffer_height - 20)
-                        && (x >= 40 && x < width-40)
-                        )  {
-                    color >>= 6;
-                }
-                *output_buffer_16bit++ = current_palette[color];
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit++ >> 4];
             }
             break;
         default:
