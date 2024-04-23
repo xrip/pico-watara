@@ -839,7 +839,6 @@ int __time_critical_func(main)() {
 
 #else
         settings.aspect_ratio = false;
-//        graphics_set_offset(40, 20);
         graphics_set_buffer((uint8_t *)SCREEN, 240, 200);
         graphics_set_mode(GRAPHICSMODE_DEFAULT);
         memcpy(SCREEN, (void *)bezel, sizeof(bezel));
