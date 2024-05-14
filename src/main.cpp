@@ -71,22 +71,19 @@ typedef union{
 
 static controller keyboard = { false, false, false, false, false, false, false, false };
 static controller gamepad1 = { false, false, false, false, false, false, false, false };
-static input_bits_t gamepad2_bits = { false, false, false, false, false, false, false, false };
+//static input_bits_t gamepad2_bits = { false, false, false, false, false, false, false, false };
 
 bool swap_ab = false;
 
-void nespad_tick() {
+void gamepad1_update() {
     nespad_read();
-
-    uint8 controls_state = 0;
-
+    
     if (settings.swap_ab) {
         gamepad1.bits.b = (nespad_state & DPAD_A) != 0;
         gamepad1.bits.a = (nespad_state & DPAD_B) != 0;
     } else {
         gamepad1.bits.a = (nespad_state & DPAD_A) != 0;
         gamepad1.bits.b = (nespad_state & DPAD_B) != 0;
-
     }
 
     gamepad1.bits.select = (nespad_state & DPAD_SELECT) != 0;
@@ -95,8 +92,6 @@ void nespad_tick() {
     gamepad1.bits.down = (nespad_state & DPAD_DOWN) != 0;
     gamepad1.bits.left = (nespad_state & DPAD_LEFT) != 0;
     gamepad1.bits.right = (nespad_state & DPAD_RIGHT) != 0;
-
-    supervision_set_input(gamepad1.state | keyboard.state);
 }
 
 static bool isInReport(hid_keyboard_report_t const* report, const unsigned char keycode) {
@@ -324,18 +319,19 @@ void filebrowser(const char pathname[256], const char executables[11]) {
         int current_item = 0;
 
         while (true) {
+            gamepad1.state |= keyboard.state;
             sleep_ms(100);
 
             if (!debounce) {
-                debounce = !(nespad_state & DPAD_START || keyboard.bits.start);
+                debounce = !gamepad1.bits.start;
             }
 
             // ESCAPE
-            if (nespad_state & DPAD_SELECT || keyboard.bits.select) {
+            if (gamepad1.bits.select) {
                 return;
             }
 
-            if (nespad_state & DPAD_DOWN || keyboard.bits.down) {
+            if (gamepad1.bits.down) {
                 if (offset + (current_item + 1) < total_files) {
                     if (current_item + 1 < per_page) {
                         current_item++;
@@ -346,7 +342,7 @@ void filebrowser(const char pathname[256], const char executables[11]) {
                 }
             }
 
-            if (nespad_state & DPAD_UP || keyboard.bits.up) {
+            if (gamepad1.bits.up) {
                 if (current_item > 0) {
                     current_item--;
                 }
@@ -355,14 +351,14 @@ void filebrowser(const char pathname[256], const char executables[11]) {
                 }
             }
 
-            if (nespad_state & DPAD_RIGHT || keyboard.bits.right) {
+            if (gamepad1.bits.right) {
                 offset += per_page;
                 if (offset + (current_item + 1) > total_files) {
                     offset = total_files - (current_item + 1);
                 }
             }
 
-            if (nespad_state & DPAD_LEFT || keyboard.bits.left) {
+            if (gamepad1.bits.left) {
                 if (offset > per_page) {
                     offset -= per_page;
                 }
@@ -372,7 +368,7 @@ void filebrowser(const char pathname[256], const char executables[11]) {
                 }
             }
 
-            if (debounce && (nespad_state & DPAD_START || keyboard.bits.start)) {
+            if (debounce && gamepad1.bits.start) {
                 auto file_at_cursor = fileItems[offset + current_item];
 
                 if (file_at_cursor.is_directory) {
@@ -780,7 +776,8 @@ void __time_critical_func(render_core)() {
             refresh_lcd();
 #endif
             ps2kbd.tick();
-            nespad_tick();
+            gamepad1_update();
+            supervision_set_input(gamepad1.state | keyboard.state);
 
             last_frame_tick = tick;
         }
