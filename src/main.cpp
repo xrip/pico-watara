@@ -9,7 +9,7 @@ extern "C" {
 #include <potator/supervision.h>
 #include "potator/sound.h"
 }
-
+#include "frame.h"
 #include <graphics.h>
 #include "audio.h"
 
@@ -33,7 +33,7 @@ bool reboot = false;
 bool limit_fps = true;
 semaphore vga_start_semaphore;
 
-uint8_t SCREEN[SV_H][SV_W];
+uint8_t SCREEN[200][240];
 
 typedef struct __attribute__((__packed__)) {
     uint8_t version;
@@ -151,7 +151,7 @@ typedef struct __attribute__((__packed__)) {
     char filename[79];
 } file_item_t;
 
-constexpr int max_files = 100;
+constexpr int max_files = 600;
 file_item_t * fileItems = (file_item_t *)(&SCREEN[0][0] + TEXTMODE_COLS*TEXTMODE_ROWS*2);
 
 int compareFileItems(const void* a, const void* b) {
@@ -456,7 +456,7 @@ typedef struct __attribute__((__packed__)) {
     const void* value;
     menu_callback_t callback;
     uint8_t max_value;
-    char value_list[15][10];
+    char value_list[45][20];
 } MenuItem;
 
 uint16_t frequencies[] = { 378, 396, 404, 408, 412, 416, 420, 424, 432 };
@@ -572,7 +572,38 @@ const MenuItem menu_items[] = {
         {"Swap AB <> BA: %s",     ARRAY, &settings.swap_ab,  nullptr, 1, {"NO ",       "YES"}},
         {},
         { "Ghosting pix: %i ", INT, &settings.ghosting, nullptr, 8 },
-        { "Palette: %i ", INT, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT-1 },
+        { "Palette: %s ", ARRAY, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT-1, {
+                  "DEFAULT          "
+                , "AMBER            "
+                , "GREEN            "
+                , "BLUE             "
+                , "BGB              "
+                , "WATAROO          "
+                , "GB_DMG           "
+                , "GB_POCKET        "
+                , "GB_LIGHT         "
+                , "BLOSSOM_PINK     "
+                , "BUBBLES_BLUE     "
+                , "BUTTERCUP_GREEN  "
+                , "DIGIVICE         "
+                , "GAME_COM         "
+                , "GAMEKING         "
+                , "GAME_MASTER      "
+                , "GOLDEN_WILD      "
+                , "GREENSCALE       "
+                , "HOKAGE_ORANGE    "
+                , "LABO_FAWN        "
+                , "SUPER_SAIYAN     "
+                , "MICROVISION      "
+                , "MILLION_LIVE_GOLD"
+                , "ODYSSEY_GOLD     "
+                , "SHINY_SKY_BLUE   "
+                , "SLIME_BLUE       "
+                , "TI_83            "
+                , "TRAVEL_WOOD      "
+                , "VIRTUAL_BOY      "
+                , "TV-LINK          "
+         }},
 #if VGA
         { "Keep aspect ratio: %s",     ARRAY, &settings.aspect_ratio,  nullptr, 1, {"NO ",       "YES"}},
 #endif
@@ -697,17 +728,22 @@ void menu() {
     supervision_set_color_scheme(settings.palette);
 #if VGA
     if (settings.aspect_ratio) {
-        graphics_set_offset(80, 40);
-    } else {
-        graphics_set_offset(0, 0);
-    }
-    graphics_set_mode(settings.aspect_ratio ? GRAPHICSMODE_ASPECT : GRAPHICSMODE_DEFAULT);
-#else
-    graphics_set_offset(80, 40);
-    graphics_set_mode(GRAPHICSMODE_DEFAULT);
-#endif
+        graphics_set_offset(40, 20);
+        graphics_set_buffer((uint8_t *)SCREEN, 240, 200);
+        graphics_set_mode(GRAPHICSMODE_ASPECT);
+        memcpy(SCREEN, (void *)bezel, sizeof(bezel));
 
-    supervision_set_ghosting(settings.ghosting);
+    } else {
+        graphics_set_buffer((uint8_t *)SCREEN, SV_W, SV_H);
+        graphics_set_offset(0, 0);
+
+        graphics_set_mode(GRAPHICSMODE_DEFAULT);
+    }
+#else
+    graphics_set_mode(GRAPHICSMODE_DEFAULT);
+    memcpy(SCREEN, (void *)bezel, sizeof(bezel));
+#endif
+supervision_set_ghosting(settings.ghosting);
     save_config();
 }
 
@@ -721,11 +757,14 @@ void __time_critical_func(render_core)() {
     graphics_init();
 
     const auto buffer = (uint8_t *)SCREEN;
-    graphics_set_buffer(buffer, SV_W, SV_H);
+    graphics_set_buffer(buffer, 240, 200);
     graphics_set_textbuffer(buffer);
     graphics_set_bgcolor(0x000000);
+#if VGA
     graphics_set_offset(0, 0);
-
+#else
+    graphics_set_offset(40, 20);
+#endif
     graphics_set_flashmode(false, false);
     sem_acquire_blocking(&vga_start_semaphore);
 
@@ -790,6 +829,16 @@ int __time_critical_func(main)() {
 
     supervision_init();
 
+    graphics_set_palette((3 + 1), RGB888(0xff, 0xff, 0xff));
+    graphics_set_palette((3 + 2), RGB888(0x00, 0x00, 0x00));
+    graphics_set_palette((3 + 3), RGB888(0xff, 0x00, 0x00));
+    graphics_set_palette((3 + 4), RGB888(0xff, 0xff, 0x00));
+    graphics_set_palette((3 + 5), RGB888(0x00, 0xff, 0x00));
+    graphics_set_palette((3 + 6), RGB888(0x00, 0xff, 0xff));
+    graphics_set_palette((3 + 7), RGB888(0x00, 0x00, 0xff));
+    graphics_set_palette((3 + 8), RGB888(0xff, 0x00, 0xff));
+    supervision_set_ghosting(settings.ghosting);
+
     while (true) {
 
         graphics_set_mode(TEXTMODE_DEFAULT);
@@ -797,25 +846,44 @@ int __time_critical_func(main)() {
 
         if (supervision_load((uint8_t *)rom, rom_size) ) {
             supervision_set_color_scheme(settings.palette);
-        //    supervision_set_ghosting(0);
+            supervision_set_ghosting(0);
         }
 
 #if VGA
         if (settings.aspect_ratio) {
-            graphics_set_offset(80, 40);
+            graphics_set_offset(40, 20);
+            graphics_set_buffer((uint8_t *)SCREEN, 240, 200);
+            graphics_set_mode(GRAPHICSMODE_ASPECT);
+            memcpy(SCREEN, (void *)bezel, sizeof(bezel));
         } else {
+            graphics_set_buffer((uint8_t *)SCREEN, SV_W, SV_H);
             graphics_set_offset(0, 0);
+
+            graphics_set_mode(GRAPHICSMODE_DEFAULT);
         }
-        graphics_set_mode(settings.aspect_ratio ? GRAPHICSMODE_ASPECT : GRAPHICSMODE_DEFAULT);
+
 #else
-        graphics_set_offset(80, 40);
+        settings.aspect_ratio = false;
+        graphics_set_buffer((uint8_t *)SCREEN, 240, 200);
         graphics_set_mode(GRAPHICSMODE_DEFAULT);
+        memcpy(SCREEN, (void *)bezel, sizeof(bezel));
 #endif
+
+
+
 
         start_time = time_us_64();
 
         while (!reboot) {
-            supervision_exec_ex((uint8_t *)SCREEN, SV_W, 0);
+#if VGA
+            if (settings.aspect_ratio) {
+                supervision_exec_ex((uint8_t *) SCREEN + 240 * 20 + 40, 240, 0);
+            } else {
+                supervision_exec_ex((uint8_t *) SCREEN, SV_W, 0);
+            }
+#else
+                supervision_exec_ex((uint8_t *) SCREEN + 240 * 20 + 40, 240, 0);
+#endif
             // for(int x = 0; x <64; x++) graphics_set_palette(x, RGB888(bitmap.pal.color[x][0], bitmap.pal.color[x][1], bitmap.pal.color[x][2]));
 
             if ((gamepad1.bits.start && gamepad1.bits.select) || (keyboard.bits.start && keyboard.bits.select)) {

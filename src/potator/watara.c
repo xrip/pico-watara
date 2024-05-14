@@ -94,7 +94,7 @@ void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, int16 backbuff
         for (i = 0; i < SV_H; i++) {
             if (scan >= 0x1fe0)
                 scan -= 0x1fe0; // SSSnake
-            gpu_render_scanline(scan, backbuffer, innerx, size);
+            gpu_render_scanline(scan, backbuffer, innerx, SV_W);
             backbuffer += backbufferWidth;
             scan += 0x30;
         }
