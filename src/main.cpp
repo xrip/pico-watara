@@ -214,20 +214,19 @@ bool filebrowser_loadfile(const char pathname[256]) {
     if (FR_OK == f_open(&file, pathname, FA_READ)) {
         uint8_t buffer[FLASH_PAGE_SIZE];
 
-        do {
+        for (;;) {
             f_read(&file, &buffer, FLASH_PAGE_SIZE, &bytes_read);
+            
+            if (!bytes_read) break;
+            
+            const uint32_t ints = save_and_disable_interrupts();
+            flash_range_program(flash_target_offset, buffer, FLASH_PAGE_SIZE);
+            restore_interrupts(ints);
 
-            if (bytes_read) {
-                const uint32_t ints = save_and_disable_interrupts();
-                flash_range_program(flash_target_offset, buffer, FLASH_PAGE_SIZE);
-                restore_interrupts(ints);
+            gpio_put(PICO_DEFAULT_LED_PIN, flash_target_offset >> 13 & 1);
 
-                gpio_put(PICO_DEFAULT_LED_PIN, flash_target_offset >> 13 & 1);
-
-                flash_target_offset += FLASH_PAGE_SIZE;
-            }
-        }
-        while (bytes_read != 0);
+            flash_target_offset += FLASH_PAGE_SIZE;
+        };
 
         gpio_put(PICO_DEFAULT_LED_PIN, true);
     }
