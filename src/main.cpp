@@ -71,19 +71,22 @@ typedef union{
 
 static controller keyboard = { false, false, false, false, false, false, false, false };
 static controller gamepad1 = { false, false, false, false, false, false, false, false };
-//static input_bits_t gamepad2_bits = { false, false, false, false, false, false, false, false };
+static input_bits_t gamepad2_bits = { false, false, false, false, false, false, false, false };
 
 bool swap_ab = false;
 
-void gamepad1_update() {
+void nespad_tick() {
     nespad_read();
-    
+
+    uint8 controls_state = 0;
+
     if (settings.swap_ab) {
         gamepad1.bits.b = (nespad_state & DPAD_A) != 0;
         gamepad1.bits.a = (nespad_state & DPAD_B) != 0;
     } else {
         gamepad1.bits.a = (nespad_state & DPAD_A) != 0;
         gamepad1.bits.b = (nespad_state & DPAD_B) != 0;
+
     }
 
     gamepad1.bits.select = (nespad_state & DPAD_SELECT) != 0;
@@ -92,6 +95,8 @@ void gamepad1_update() {
     gamepad1.bits.down = (nespad_state & DPAD_DOWN) != 0;
     gamepad1.bits.left = (nespad_state & DPAD_LEFT) != 0;
     gamepad1.bits.right = (nespad_state & DPAD_RIGHT) != 0;
+
+    supervision_set_input(gamepad1.state | keyboard.state);
 }
 
 static bool isInReport(hid_keyboard_report_t const* report, const unsigned char keycode) {
@@ -214,19 +219,20 @@ bool filebrowser_loadfile(const char pathname[256]) {
     if (FR_OK == f_open(&file, pathname, FA_READ)) {
         uint8_t buffer[FLASH_PAGE_SIZE];
 
-        for (;;) {
+        do {
             f_read(&file, &buffer, FLASH_PAGE_SIZE, &bytes_read);
-            
-            if (!bytes_read) break;
-            
-            const uint32_t ints = save_and_disable_interrupts();
-            flash_range_program(flash_target_offset, buffer, FLASH_PAGE_SIZE);
-            restore_interrupts(ints);
 
-            gpio_put(PICO_DEFAULT_LED_PIN, flash_target_offset >> 13 & 1);
+            if (bytes_read) {
+                const uint32_t ints = save_and_disable_interrupts();
+                flash_range_program(flash_target_offset, buffer, FLASH_PAGE_SIZE);
+                restore_interrupts(ints);
 
-            flash_target_offset += FLASH_PAGE_SIZE;
-        };
+                gpio_put(PICO_DEFAULT_LED_PIN, flash_target_offset >> 13 & 1);
+
+                flash_target_offset += FLASH_PAGE_SIZE;
+            }
+        }
+        while (bytes_read != 0);
 
         gpio_put(PICO_DEFAULT_LED_PIN, true);
     }
@@ -318,19 +324,18 @@ void filebrowser(const char pathname[256], const char executables[11]) {
         int current_item = 0;
 
         while (true) {
-            gamepad1.state |= keyboard.state;
             sleep_ms(100);
 
             if (!debounce) {
-                debounce = !gamepad1.bits.start;
+                debounce = !(nespad_state & DPAD_START || keyboard.bits.start);
             }
 
             // ESCAPE
-            if (gamepad1.bits.select) {
+            if (nespad_state & DPAD_SELECT || keyboard.bits.select) {
                 return;
             }
 
-            if (gamepad1.bits.down) {
+            if (nespad_state & DPAD_DOWN || keyboard.bits.down) {
                 if (offset + (current_item + 1) < total_files) {
                     if (current_item + 1 < per_page) {
                         current_item++;
@@ -341,7 +346,7 @@ void filebrowser(const char pathname[256], const char executables[11]) {
                 }
             }
 
-            if (gamepad1.bits.up) {
+            if (nespad_state & DPAD_UP || keyboard.bits.up) {
                 if (current_item > 0) {
                     current_item--;
                 }
@@ -350,14 +355,14 @@ void filebrowser(const char pathname[256], const char executables[11]) {
                 }
             }
 
-            if (gamepad1.bits.right) {
+            if (nespad_state & DPAD_RIGHT || keyboard.bits.right) {
                 offset += per_page;
                 if (offset + (current_item + 1) > total_files) {
                     offset = total_files - (current_item + 1);
                 }
             }
 
-            if (gamepad1.bits.left) {
+            if (nespad_state & DPAD_LEFT || keyboard.bits.left) {
                 if (offset > per_page) {
                     offset -= per_page;
                 }
@@ -367,7 +372,7 @@ void filebrowser(const char pathname[256], const char executables[11]) {
                 }
             }
 
-            if (debounce && gamepad1.bits.start) {
+            if (debounce && (nespad_state & DPAD_START || keyboard.bits.start)) {
                 auto file_at_cursor = fileItems[offset + current_item];
 
                 if (file_at_cursor.is_directory) {
@@ -775,8 +780,7 @@ void __time_critical_func(render_core)() {
             refresh_lcd();
 #endif
             ps2kbd.tick();
-            gamepad1_update();
-            supervision_set_input(gamepad1.state | keyboard.state);
+            nespad_tick();
 
             last_frame_tick = tick;
         }
@@ -891,8 +895,8 @@ int __time_critical_func(main)() {
             if (limit_fps) {
 
                 frame_cnt++;
-                if (frame_cnt == 5) {
-                    while (time_us_64() - frame_timer_start < 20000 * 5);  // 60 Hz
+                if (frame_cnt == 6) {
+                    while (time_us_64() - frame_timer_start < 16666 * 6);  // 60 Hz
                     frame_timer_start = time_us_64();
                     frame_cnt = 0;
                 }
