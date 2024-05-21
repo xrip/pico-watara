@@ -895,8 +895,8 @@ int __time_critical_func(main)() {
             if (limit_fps) {
 
                 frame_cnt++;
-                if (frame_cnt == 6) {
-                    while (time_us_64() - frame_timer_start < 16666 * 6);  // 60 Hz
+                if (frame_cnt == 5) {
+                    while (time_us_64() - frame_timer_start < 20000 * 5);  // 60 Hz
                     frame_timer_start = time_us_64();
                     frame_cnt = 0;
                 }
