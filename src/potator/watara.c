@@ -20,6 +20,9 @@
 
 static M6502 m6502_registers;
 static BOOL irq = FALSE;
+extern uint8 regs[0x2000];
+extern uint8 upperRam[0x2000];
+extern int ghostCount;
 
 void m6502_set_irq_line(BOOL assertLine)
 {
@@ -44,6 +47,7 @@ void supervision_init(void)
     // 256 - 4MHz,
     // 512 - 8MHz, ...
     m6502_registers.IPeriod = 256;
+    //regs = memorymap_getRegisters();
 }
 
 void supervision_reset(void)
@@ -74,9 +78,9 @@ BOOL supervision_load(const uint8 *rom, uint32 romSize)
 
 void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, int16 backbufferWidth, BOOL skipFrame)
 {
-    uint32 i, scan;
-    uint8 *regs = memorymap_getRegisters();
+    uint32 i, scanline;
     uint8 innerx, size;
+    int previous_color, current_color = 0;
 
     // Number of iterations = 256 * 256 / m6502_registers.IPeriod
     for (i = 0; i < 256; i++) {
@@ -85,18 +89,72 @@ void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, int16 backbuff
     }
 
     if (!skipFrame) {
-        scan   = regs[XPOS] / 4 + regs[YPOS] * 0x30;
+        scanline   = regs[XPOS] / 4 + regs[YPOS] * 0x30;
         innerx = regs[XPOS] & 3;
         size   = regs[XSIZE]; // regs[XSIZE] <= SV_W
         if (size > SV_W)
             size = SV_W; // 192: Chimera, Matta Blatta, Tennis Pro '92
 
         for (i = 0; i < SV_H; i++) {
-            if (scan >= 0x1fe0)
-                scan -= 0x1fe0; // SSSnake
-            gpu_render_scanline(scan, backbuffer, innerx, SV_W);
+            if (scanline >= 0x1fe0)
+                scanline -= 0x1fe0; // SSSnake
+//            gpu_render_scanline(scanline, backbuffer, innerx, SV_W);
+
+            uint8 *vram_line = upperRam + scanline;
+            uint8 x = 0;
+
+
+            uint8 b = *vram_line++;
+
+            if (innerx) {
+                b >>= innerx * 2;
+            }
+
+            if (ghostCount) {
+#pragma GCC unroll 4
+                while (x < size) {
+                    backbuffer[x++] = (b & 3) << 4;
+                    b >>= 2;
+                    backbuffer[x++] = (b & 3) << 4;
+                    b >>= 2;
+                    backbuffer[x++] = (b & 3) << 4;
+                    b >>= 2;
+                    backbuffer[x++] = (b & 3) << 4;
+
+                    b = *vram_line++;
+                }
+            } else {
+#pragma GCC unroll 4
+                while (x < size) {
+                    previous_color = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
+                    current_color = (b & 3) << 4; // new state in 8 bit format
+                    if (current_color < previous_color) current_color = previous_color;
+                    backbuffer[x++] = current_color;
+                    b >>= 2;
+
+                    previous_color = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
+                    current_color = (b & 3) << 4; // new state in 8 bit format
+                    if (current_color < previous_color) current_color = previous_color;
+                    backbuffer[x++] = current_color;
+                    b >>= 2;
+
+                    previous_color = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
+                    current_color = (b & 3) << 4; // new state in 8 bit format
+                    if (current_color < previous_color) current_color = previous_color;
+                    backbuffer[x++] = current_color;
+                    b >>= 2;
+
+                    previous_color = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
+                    current_color = (b & 3) << 4; // new state in 8 bit format
+                    if (current_color < previous_color) current_color = previous_color;
+                    backbuffer[x++] = current_color;
+
+                    b = *vram_line++;
+                }
+            }
+
             backbuffer += backbufferWidth;
-            scan += 0x30;
+            scanline += 0x30;
         }
     }
 

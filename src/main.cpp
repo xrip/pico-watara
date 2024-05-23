@@ -566,7 +566,7 @@ bool toggle_color() {
 const MenuItem menu_items[] = {
         {"Swap AB <> BA: %s",     ARRAY, &settings.swap_ab,  nullptr, 1, {"NO ",       "YES"}},
         {},
-        { "Ghosting pix: %i ", INT, &settings.ghosting, nullptr, 8 },
+        { "Ghosting pix: %s ", ARRAY, &settings.ghosting, nullptr, 1, { "YES", "NO "} },
         { "Palette: %s ", ARRAY, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT-1, {
                   "DEFAULT          "
                 , "AMBER            "
@@ -738,7 +738,7 @@ void menu() {
     graphics_set_mode(GRAPHICSMODE_DEFAULT);
     memcpy(SCREEN, (void *)bezel, sizeof(bezel));
 #endif
-supervision_set_ghosting(settings.ghosting);
+    supervision_set_ghosting(settings.ghosting);
     save_config();
 }
 

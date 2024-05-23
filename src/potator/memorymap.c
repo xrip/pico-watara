@@ -10,8 +10,8 @@
 #include <string.h>
 
 static uint8 lowerRam[0x2000];
-static uint8 upperRam[0x2000];
-static uint8 regs[0x2000];
+uint8 upperRam[0x2000];
+uint8 regs[0x2000];
 static const uint8 *programRom;
 static const uint8 *lowerRomBank;
 static const uint8 *upperRomBank;
