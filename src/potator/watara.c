@@ -128,26 +128,22 @@ void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, int16 backbuff
                 while (x < size) {
                     previous_color = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
                     current_color = (b & 3) << 4; // new state in 8 bit format
-                    if (current_color < previous_color) current_color = previous_color;
-                    backbuffer[x++] = current_color;
+                    backbuffer[x++] = current_color < previous_color ? previous_color : current_color;
                     b >>= 2;
 
                     previous_color = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
                     current_color = (b & 3) << 4; // new state in 8 bit format
-                    if (current_color < previous_color) current_color = previous_color;
-                    backbuffer[x++] = current_color;
+                    backbuffer[x++] = current_color < previous_color ? previous_color : current_color;
                     b >>= 2;
 
                     previous_color = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
                     current_color = (b & 3) << 4; // new state in 8 bit format
-                    if (current_color < previous_color) current_color = previous_color;
-                    backbuffer[x++] = current_color;
+                    backbuffer[x++] = current_color < previous_color ? previous_color : current_color;
                     b >>= 2;
 
                     previous_color = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
                     current_color = (b & 3) << 4; // new state in 8 bit format
-                    if (current_color < previous_color) current_color = previous_color;
-                    backbuffer[x++] = current_color;
+                    backbuffer[x++] = current_color < previous_color ? previous_color : current_color;
 
                     b = *vram_line++;
                 }
