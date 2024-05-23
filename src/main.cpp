@@ -566,7 +566,7 @@ bool toggle_color() {
 const MenuItem menu_items[] = {
         {"Swap AB <> BA: %s",     ARRAY, &settings.swap_ab,  nullptr, 1, {"NO ",       "YES"}},
         {},
-        { "Ghosting pix: %s ", ARRAY, &settings.ghosting, nullptr, 1, { "YES", "NO "} },
+        { "Ghosting pix: %s ", ARRAY, &settings.ghosting, nullptr, 1, { "NO ", "YES"} },
         { "Palette: %s ", ARRAY, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT-1, {
                   "DEFAULT          "
                 , "AMBER            "
@@ -833,7 +833,7 @@ int __time_critical_func(main)() {
     graphics_set_palette((3 + 6), RGB888(0x00, 0xff, 0xff));
     graphics_set_palette((3 + 7), RGB888(0x00, 0x00, 0xff));
     graphics_set_palette((3 + 8), RGB888(0xff, 0x00, 0xff));
-    supervision_set_ghosting(settings.ghosting);
+
 
     while (true) {
 
@@ -842,7 +842,7 @@ int __time_critical_func(main)() {
 
         if (supervision_load((uint8_t *)rom, rom_size) ) {
             supervision_set_color_scheme(settings.palette);
-            supervision_set_ghosting(0);
+            supervision_set_ghosting(settings.ghosting);
         }
 
 #if VGA

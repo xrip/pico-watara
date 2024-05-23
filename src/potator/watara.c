@@ -110,7 +110,7 @@ void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, int16 backbuff
                 b >>= innerx * 2;
             }
 
-            if (ghostCount) {
+            if (!ghostCount) {
 #pragma GCC unroll 4
                 while (x < size) {
                     backbuffer[x++] = (b & 3) << 4;
