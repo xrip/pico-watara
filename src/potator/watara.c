@@ -80,7 +80,7 @@ void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, int16 backbuff
 {
     uint32 i, scanline;
     uint8 innerx, size;
-    int previous_color, current_color = 0;
+    int previous_color, current_color;
 
     // Number of iterations = 256 * 256 / m6502_registers.IPeriod
     for (i = 0; i < 256; i++) {
