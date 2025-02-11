@@ -1,6 +1,6 @@
 #pragma GCC optimize("Ofast")
 
-#include "pico/platform.h"
+#include "pico.h"
 #include "pico/platform.h"
 #include "gpu.h"
 

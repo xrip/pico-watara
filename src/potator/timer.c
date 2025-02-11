@@ -1,5 +1,5 @@
 #pragma GCC optimize("Ofast")
-#include "pico/platform.h"
+#include "pico.h"
 #include "timer.h"
 
 #include "memorymap.h"

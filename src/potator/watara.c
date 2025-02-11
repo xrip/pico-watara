@@ -1,5 +1,5 @@
 #pragma GCC optimize("Ofast")
-#include "pico/platform.h"
+#include "pico.h"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
