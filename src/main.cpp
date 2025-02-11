@@ -79,8 +79,8 @@ void gamepad1_update() {
     nespad_read();
     
     if (settings.swap_ab) {
-        gamepad1.bits.b = keyboard.b || (nespad_state & DPAD_A) != 0;
-        gamepad1.bits.a = keyboard.a || (nespad_state & DPAD_B) != 0;
+        gamepad1.bits.b = keyboard.a || (nespad_state & DPAD_A) != 0;
+        gamepad1.bits.a = keyboard.b || (nespad_state & DPAD_B) != 0;
     } else {
         gamepad1.bits.a = keyboard.a || (nespad_state & DPAD_A) != 0;
         gamepad1.bits.b = keyboard.b || (nespad_state & DPAD_B) != 0;
@@ -110,16 +110,21 @@ __not_in_flash_func(process_kbd_report)(hid_keyboard_report_t const* report, hid
         printf("%2.2X", i);
     printf("\r\n");
      */
-    keyboard.start = isInReport(report, HID_KEY_ENTER) || isInReport(report, HID_KEY_KEYPAD_2);
-    keyboard.select = isInReport(report, HID_KEY_BACKSPACE) || isInReport(report, HID_KEY_ESCAPE) || isInReport(report, HID_KEY_KEYPAD_3);
+    keyboard.start = isInReport(report, HID_KEY_ENTER) || isInReport(report, HID_KEY_KEYPAD_ENTER);
+    keyboard.select = isInReport(report, HID_KEY_BACKSPACE) || isInReport(report, HID_KEY_ESCAPE) || isInReport(report, HID_KEY_KEYPAD_ADD);
 
     keyboard.a = isInReport(report, HID_KEY_Z) || isInReport(report, HID_KEY_O) || isInReport(report, HID_KEY_KEYPAD_0);
     keyboard.b = isInReport(report, HID_KEY_X) || isInReport(report, HID_KEY_P) || isInReport(report, HID_KEY_KEYPAD_DECIMAL);
 
-    keyboard.up = isInReport(report, HID_KEY_ARROW_UP) || isInReport(report, HID_KEY_W) || isInReport(report, HID_KEY_KEYPAD_8);
-    keyboard.down = isInReport(report, HID_KEY_ARROW_DOWN) || isInReport(report, HID_KEY_S) || isInReport(report, HID_KEY_KEYPAD_5);
-    keyboard.left = isInReport(report, HID_KEY_ARROW_LEFT) || isInReport(report, HID_KEY_A) || isInReport(report, HID_KEY_KEYPAD_4);
-    keyboard.right = isInReport(report, HID_KEY_ARROW_RIGHT)  || isInReport(report, HID_KEY_D) || isInReport(report, HID_KEY_KEYPAD_6);
+    bool b7 = isInReport(report, HID_KEY_KEYPAD_7);
+    bool b9 = isInReport(report, HID_KEY_KEYPAD_9);
+    bool b1 = isInReport(report, HID_KEY_KEYPAD_1);
+    bool b3 = isInReport(report, HID_KEY_KEYPAD_3);
+
+    keyboard.up = b7 || b9 || isInReport(report, HID_KEY_ARROW_UP) || isInReport(report, HID_KEY_W) || isInReport(report, HID_KEY_KEYPAD_8);
+    keyboard.down = b1 || b3 || isInReport(report, HID_KEY_ARROW_DOWN) || isInReport(report, HID_KEY_S) || isInReport(report, HID_KEY_KEYPAD_2) || isInReport(report, HID_KEY_KEYPAD_5);
+    keyboard.left = b7 || b1 || isInReport(report, HID_KEY_ARROW_LEFT) || isInReport(report, HID_KEY_A) || isInReport(report, HID_KEY_KEYPAD_4);
+    keyboard.right = b9 || b3 || isInReport(report, HID_KEY_ARROW_RIGHT)  || isInReport(report, HID_KEY_D) || isInReport(report, HID_KEY_KEYPAD_6);
     //-------------------------------------------------------------------------
 }
 
@@ -562,7 +567,7 @@ bool toggle_color() {
 const MenuItem menu_items[] = {
         {"Swap AB <> BA: %s",     ARRAY, &settings.swap_ab,  nullptr, 1, {"NO ",       "YES"}},
         {},
-        { "Ghosting pix: %s ", ARRAY, &settings.ghosting, nullptr, 1, { "NO ", "YES"} },
+        { "Ghosting pix: %i ", INT, &settings.ghosting, nullptr, 8 },
         { "Palette: %s ", ARRAY, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT-1, {
                   "DEFAULT          "
                 , "AMBER            "
