@@ -64,12 +64,12 @@ struct input_bits_t {
     bool start: true;
 };
 
-typedef union{
+typedef union {
     input_bits_t bits;
-    uint8 state;
+    uint8_t state;
 } controller;
 
-static controller keyboard = { false, false, false, false, false, false, false, false };
+static input_bits_t keyboard = { false, false, false, false, false, false, false, false };
 static controller gamepad1 = { false, false, false, false, false, false, false, false };
 //static input_bits_t gamepad2_bits = { false, false, false, false, false, false, false, false };
 
@@ -79,19 +79,19 @@ void gamepad1_update() {
     nespad_read();
     
     if (settings.swap_ab) {
-        gamepad1.bits.b = (nespad_state & DPAD_A) != 0;
-        gamepad1.bits.a = (nespad_state & DPAD_B) != 0;
+        gamepad1.bits.b = keyboard.b || (nespad_state & DPAD_A) != 0;
+        gamepad1.bits.a = keyboard.a || (nespad_state & DPAD_B) != 0;
     } else {
-        gamepad1.bits.a = (nespad_state & DPAD_A) != 0;
-        gamepad1.bits.b = (nespad_state & DPAD_B) != 0;
+        gamepad1.bits.a = keyboard.a || (nespad_state & DPAD_A) != 0;
+        gamepad1.bits.b = keyboard.b || (nespad_state & DPAD_B) != 0;
     }
 
-    gamepad1.bits.select = (nespad_state & DPAD_SELECT) != 0;
-    gamepad1.bits.start = (nespad_state & DPAD_START) != 0;
-    gamepad1.bits.up = (nespad_state & DPAD_UP) != 0;
-    gamepad1.bits.down = (nespad_state & DPAD_DOWN) != 0;
-    gamepad1.bits.left = (nespad_state & DPAD_LEFT) != 0;
-    gamepad1.bits.right = (nespad_state & DPAD_RIGHT) != 0;
+    gamepad1.bits.select = keyboard.select || (nespad_state & DPAD_SELECT) != 0;
+    gamepad1.bits.start = keyboard.start || (nespad_state & DPAD_START) != 0;
+    gamepad1.bits.up = keyboard.up || (nespad_state & DPAD_UP) != 0;
+    gamepad1.bits.down = keyboard.down ||(nespad_state & DPAD_DOWN) != 0;
+    gamepad1.bits.left = keyboard.left || (nespad_state & DPAD_LEFT) != 0;
+    gamepad1.bits.right = keyboard.right || (nespad_state & DPAD_RIGHT) != 0;
 }
 
 static bool isInReport(hid_keyboard_report_t const* report, const unsigned char keycode) {
@@ -110,16 +110,16 @@ __not_in_flash_func(process_kbd_report)(hid_keyboard_report_t const* report, hid
         printf("%2.2X", i);
     printf("\r\n");
      */
-    keyboard.bits.start = isInReport(report, HID_KEY_ENTER);
-    keyboard.bits.select = isInReport(report, HID_KEY_BACKSPACE) || isInReport(report, HID_KEY_ESCAPE);
+    keyboard.start = isInReport(report, HID_KEY_ENTER) || isInReport(report, HID_KEY_KEYPAD_2);
+    keyboard.select = isInReport(report, HID_KEY_BACKSPACE) || isInReport(report, HID_KEY_ESCAPE) || isInReport(report, HID_KEY_KEYPAD_3);
 
-    keyboard.bits.a = isInReport(report, HID_KEY_Z) || isInReport(report, HID_KEY_O);
-    keyboard.bits.b = isInReport(report, HID_KEY_X) || isInReport(report, HID_KEY_P);
+    keyboard.a = isInReport(report, HID_KEY_Z) || isInReport(report, HID_KEY_O) || isInReport(report, HID_KEY_KEYPAD_0);
+    keyboard.b = isInReport(report, HID_KEY_X) || isInReport(report, HID_KEY_P) || isInReport(report, HID_KEY_KEYPAD_DECIMAL);
 
-    keyboard.bits.up = isInReport(report, HID_KEY_ARROW_UP) || isInReport(report, HID_KEY_W);
-    keyboard.bits.down = isInReport(report, HID_KEY_ARROW_DOWN) || isInReport(report, HID_KEY_S);
-    keyboard.bits.left = isInReport(report, HID_KEY_ARROW_LEFT) || isInReport(report, HID_KEY_A);
-    keyboard.bits.right = isInReport(report, HID_KEY_ARROW_RIGHT)  || isInReport(report, HID_KEY_D);
+    keyboard.up = isInReport(report, HID_KEY_ARROW_UP) || isInReport(report, HID_KEY_W) || isInReport(report, HID_KEY_KEYPAD_8);
+    keyboard.down = isInReport(report, HID_KEY_ARROW_DOWN) || isInReport(report, HID_KEY_S) || isInReport(report, HID_KEY_KEYPAD_5);
+    keyboard.left = isInReport(report, HID_KEY_ARROW_LEFT) || isInReport(report, HID_KEY_A) || isInReport(report, HID_KEY_KEYPAD_4);
+    keyboard.right = isInReport(report, HID_KEY_ARROW_RIGHT)  || isInReport(report, HID_KEY_D) || isInReport(report, HID_KEY_KEYPAD_6);
     //-------------------------------------------------------------------------
 }
 
@@ -127,9 +127,6 @@ Ps2Kbd_Mrmltr ps2kbd(
     pio1,
     0,
     process_kbd_report);
-
-
-
 
 uint_fast32_t frames = 0;
 uint64_t start_time;
@@ -318,7 +315,6 @@ void filebrowser(const char pathname[256], const char executables[11]) {
         int current_item = 0;
 
         while (true) {
-            gamepad1.state |= keyboard.state;
             sleep_ms(100);
 
             if (!debounce) {
@@ -655,21 +651,21 @@ void menu() {
                     case ARRAY:
                         if (item->max_value != 0) {
                             auto* value = (uint8_t *)item->value;
-                            if ((gamepad1.bits.right || keyboard.bits.right) && *value < item->max_value) {
+                            if (gamepad1.bits.right && *value < item->max_value) {
                                 (*value)++;
                             }
-                            if ((gamepad1.bits.left || keyboard.bits.left) && *value > 0) {
+                            if (gamepad1.bits.left && *value > 0) {
                                 (*value)--;
                             }
                         }
                         break;
                     case RETURN:
-                        if (gamepad1.bits.start || keyboard.bits.start)
+                        if (gamepad1.bits.start)
                             exit = true;
                         break;
 
                     case ROM_SELECT:
-                        if (gamepad1.bits.start || keyboard.bits.start) {
+                        if (gamepad1.bits.start) {
                             reboot = true;
                             return;
                         }
@@ -678,7 +674,7 @@ void menu() {
                         break;
                 }
 
-                if (nullptr != item->callback && (gamepad1.bits.start || keyboard.bits.start)) {
+                if (nullptr != item->callback && gamepad1.bits.start) {
                     exit = item->callback();
                 }
             }
@@ -701,16 +697,16 @@ void menu() {
             draw_text(result, x, y, color, bg_color);
         }
 
-        if (gamepad1.bits.b || (keyboard.bits.select && !keyboard.bits.start))
+        if (gamepad1.bits.b)
             exit = true;
 
-        if (gamepad1.bits.down || keyboard.bits.down) {
+        if (gamepad1.bits.down) {
             current_item = (current_item + 1) % MENU_ITEMS_NUMBER;
 
             if (menu_items[current_item].type == NONE)
                 current_item++;
         }
-        if (gamepad1.bits.up || keyboard.bits.up) {
+        if (gamepad1.bits.up) {
             current_item = (current_item - 1 + MENU_ITEMS_NUMBER) % MENU_ITEMS_NUMBER;
 
             if (menu_items[current_item].type == NONE)
@@ -776,7 +772,7 @@ void __time_critical_func(render_core)() {
 #endif
             ps2kbd.tick();
             gamepad1_update();
-            supervision_set_input(gamepad1.state | keyboard.state);
+            supervision_set_input(gamepad1.state);
 
             last_frame_tick = tick;
         }
@@ -882,7 +878,7 @@ int __time_critical_func(main)() {
 #endif
             // for(int x = 0; x <64; x++) graphics_set_palette(x, RGB888(bitmap.pal.color[x][0], bitmap.pal.color[x][1], bitmap.pal.color[x][2]));
 
-            if ((gamepad1.bits.start && gamepad1.bits.select) || (keyboard.bits.start && keyboard.bits.select)) {
+            if (gamepad1.bits.start && gamepad1.bits.select) {
                 menu();
             }
 
