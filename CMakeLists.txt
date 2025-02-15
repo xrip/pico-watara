@@ -12,7 +12,7 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-set(PICO_BOARD pico2 CACHE STRING "Board type")
+set(PICO_BOARD pico CACHE STRING "Board type")
 
 cmake_minimum_required(VERSION 3.13)
 include(pico_sdk_import.cmake)
@@ -29,7 +29,6 @@ option(HDMI "Enable HDMI display" OFF)
 option(TV "Enable TV composite output" OFF)
 option(SOFTTV "Enable TV soft composite output" OFF)
 
-SET(PICO2 ON)
 SET(I2S ON)
 #SET(SOFTTV ON)
 
@@ -72,7 +71,7 @@ message(STATUS "")
 
 add_executable(${PROJECT_NAME} ${SRC})
 
-if (PICO2)
+if( ${PICO_BOARD} MATCHES "pico2" )
 	SET(BUILD_NAME "m1p2-watara")
 else()
 	SET(BUILD_NAME "m1p1-watara")
