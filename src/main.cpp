@@ -6,6 +6,7 @@
 #include <hardware/vreg.h>
 #include <pico/multicore.h>
 #include <pico/stdlib.h>
+#include <hardware/watchdog.h>
 
 extern "C" {
 #include <potator/supervision.h>
@@ -105,6 +106,10 @@ static bool isInReport(hid_keyboard_report_t const* report, const unsigned char 
     return false;
 }
 
+static volatile bool altPressed = false;
+static volatile bool ctrlPressed = false;
+static volatile uint8_t fxPressedV = 0;
+
 void
 __not_in_flash_func(process_kbd_report)(hid_keyboard_report_t const* report, hid_keyboard_report_t const* prev_report) {
     /* printf("HID key report modifiers %2.2X report ", report->modifier);
@@ -127,7 +132,28 @@ __not_in_flash_func(process_kbd_report)(hid_keyboard_report_t const* report, hid
     keyboard.down = b1 || b3 || isInReport(report, HID_KEY_ARROW_DOWN) || isInReport(report, HID_KEY_S) || isInReport(report, HID_KEY_KEYPAD_2) || isInReport(report, HID_KEY_KEYPAD_5);
     keyboard.left = b7 || b1 || isInReport(report, HID_KEY_ARROW_LEFT) || isInReport(report, HID_KEY_A) || isInReport(report, HID_KEY_KEYPAD_4);
     keyboard.right = b9 || b3 || isInReport(report, HID_KEY_ARROW_RIGHT)  || isInReport(report, HID_KEY_D) || isInReport(report, HID_KEY_KEYPAD_6);
-    //-------------------------------------------------------------------------
+
+    altPressed = isInReport(report, HID_KEY_ALT_LEFT) || isInReport(report, HID_KEY_ALT_RIGHT);
+    ctrlPressed = isInReport(report, HID_KEY_CONTROL_LEFT) || isInReport(report, HID_KEY_CONTROL_RIGHT);
+    
+    if (altPressed && ctrlPressed && isInReport(report, HID_KEY_DELETE)) {
+        watchdog_enable(10, true);
+        while(true) {
+            tight_loop_contents();
+        }
+    }
+    if (ctrlPressed || altPressed) {
+        uint8_t fxPressed = 0;
+        if (isInReport(report, HID_KEY_F1)) fxPressed = 1;
+        else if (isInReport(report, HID_KEY_F2)) fxPressed = 2;
+        else if (isInReport(report, HID_KEY_F3)) fxPressed = 3;
+        else if (isInReport(report, HID_KEY_F4)) fxPressed = 4;
+        else if (isInReport(report, HID_KEY_F5)) fxPressed = 5;
+        else if (isInReport(report, HID_KEY_F6)) fxPressed = 6;
+        else if (isInReport(report, HID_KEY_F7)) fxPressed = 7;
+        else if (isInReport(report, HID_KEY_F8)) fxPressed = 8;
+        fxPressedV = fxPressed;
+    }
 }
 
 Ps2Kbd_Mrmltr ps2kbd(
@@ -526,9 +552,6 @@ bool load() {
     return true;
 }
 
-
-
-
 void load_config() {
     FIL file;
     char pathname[256];
@@ -885,6 +908,15 @@ int __time_critical_func(main)() {
         start_time = time_us_64();
 
         while (!reboot) {
+            if (fxPressedV) {
+                if (altPressed) {
+                    settings.save_slot = fxPressedV;
+                    load();
+                } else if (ctrlPressed) {
+                    settings.save_slot = fxPressedV;
+                    save();
+                }
+            }
 #if VGA
             if (settings.aspect_ratio) {
                 supervision_exec_ex((uint8_t *) SCREEN + 240 * 20 + 40, 240, 0);
