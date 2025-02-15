@@ -32,7 +32,7 @@ char __uninitialized_ram(filename[256]);
 static uint32_t __uninitialized_ram(rom_size) = 0;
 
 static FATFS fs;
-bool reboot = false;
+bool volatile reboot = false;
 bool limit_fps = true;
 semaphore vga_start_semaphore;
 
@@ -906,12 +906,9 @@ int __time_critical_func(main)() {
         memcpy(SCREEN, (void *)bezel, sizeof(bezel));
 #endif
 
-
-
-
         start_time = time_us_64();
 
-        while (!reboot) {
+        while (true) {
             if (fxPressedV) {
                 if (altPressed) {
                     settings.save_slot = fxPressedV;
@@ -934,7 +931,12 @@ int __time_critical_func(main)() {
 
             if (gamepad1.bits.start && gamepad1.bits.select) {
                 menu();
-                if (reboot) break;
+                if (reboot) { /// не работало нормально, видимо ресурсы где-то текут, пара ребутов и в даун, сделал, чтобы весь чип перегружало
+                    watchdog_enable(10, true);
+                    while(true) {
+                        tight_loop_contents();
+                    }
+                }
             }
 
 
@@ -958,7 +960,6 @@ int __time_critical_func(main)() {
             i2s_dma_write(&i2s_config, (const int16_t *) audio_buffer);
         }
 
-        reboot = false;
         supervision_reset();
     }
     __unreachable();
