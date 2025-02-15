@@ -238,25 +238,29 @@ bool filebrowser_loadfile(const char pathname[256]) {
     multicore_lockout_start_blocking();
     auto flash_target_offset = FLASH_TARGET_OFFSET;
     const uint32_t ints = save_and_disable_interrupts();
-    flash_range_erase(flash_target_offset, fileinfo.fsize);
+    size_t count = fileinfo.fsize;
+    count += 4096;
+    count &= ~4095;
+    flash_range_erase(flash_target_offset, count);
     restore_interrupts(ints);
 
     if (FR_OK == f_open(&file, pathname, FA_READ)) {
         uint8_t buffer[FLASH_PAGE_SIZE];
 
-        for (;;) {
+        do {
             f_read(&file, &buffer, FLASH_PAGE_SIZE, &bytes_read);
-            
-            if (!bytes_read) break;
-            
-            const uint32_t ints = save_and_disable_interrupts();
-            flash_range_program(flash_target_offset, buffer, FLASH_PAGE_SIZE);
-            restore_interrupts(ints);
 
-            gpio_put(PICO_DEFAULT_LED_PIN, flash_target_offset >> 13 & 1);
+            if (bytes_read) {
+                const uint32_t ints = save_and_disable_interrupts();
+                flash_range_program(flash_target_offset, buffer, FLASH_PAGE_SIZE);
+                restore_interrupts(ints);
 
-            flash_target_offset += FLASH_PAGE_SIZE;
-        };
+                gpio_put(PICO_DEFAULT_LED_PIN, flash_target_offset >> 13 & 1);
+
+                flash_target_offset += FLASH_PAGE_SIZE;
+            }
+        }
+        while (bytes_read != 0);
 
         gpio_put(PICO_DEFAULT_LED_PIN, true);
     }
@@ -930,6 +934,7 @@ int __time_critical_func(main)() {
 
             if (gamepad1.bits.start && gamepad1.bits.select) {
                 menu();
+                if (reboot) break;
             }
 
 
