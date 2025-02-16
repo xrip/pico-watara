@@ -1,9 +1,12 @@
 #include <cstdio>
 #include <cstring>
+#include <pico.h>
 #include <hardware/flash.h>
-#include <hardware/structs/vreg_and_chip_reset.h>
+#include <hardware/clocks.h>
+#include <hardware/vreg.h>
 #include <pico/multicore.h>
 #include <pico/stdlib.h>
+#include <hardware/watchdog.h>
 
 extern "C" {
 #include <potator/supervision.h>
@@ -29,7 +32,7 @@ char __uninitialized_ram(filename[256]);
 static uint32_t __uninitialized_ram(rom_size) = 0;
 
 static FATFS fs;
-bool reboot = false;
+bool volatile reboot = false;
 bool limit_fps = true;
 semaphore vga_start_semaphore;
 
@@ -103,6 +106,10 @@ static bool isInReport(hid_keyboard_report_t const* report, const unsigned char 
     return false;
 }
 
+static volatile bool altPressed = false;
+static volatile bool ctrlPressed = false;
+static volatile uint8_t fxPressedV = 0;
+
 void
 __not_in_flash_func(process_kbd_report)(hid_keyboard_report_t const* report, hid_keyboard_report_t const* prev_report) {
     /* printf("HID key report modifiers %2.2X report ", report->modifier);
@@ -125,7 +132,28 @@ __not_in_flash_func(process_kbd_report)(hid_keyboard_report_t const* report, hid
     keyboard.down = b1 || b3 || isInReport(report, HID_KEY_ARROW_DOWN) || isInReport(report, HID_KEY_S) || isInReport(report, HID_KEY_KEYPAD_2) || isInReport(report, HID_KEY_KEYPAD_5);
     keyboard.left = b7 || b1 || isInReport(report, HID_KEY_ARROW_LEFT) || isInReport(report, HID_KEY_A) || isInReport(report, HID_KEY_KEYPAD_4);
     keyboard.right = b9 || b3 || isInReport(report, HID_KEY_ARROW_RIGHT)  || isInReport(report, HID_KEY_D) || isInReport(report, HID_KEY_KEYPAD_6);
-    //-------------------------------------------------------------------------
+
+    altPressed = isInReport(report, HID_KEY_ALT_LEFT) || isInReport(report, HID_KEY_ALT_RIGHT);
+    ctrlPressed = isInReport(report, HID_KEY_CONTROL_LEFT) || isInReport(report, HID_KEY_CONTROL_RIGHT);
+    
+    if (altPressed && ctrlPressed && isInReport(report, HID_KEY_DELETE)) {
+        watchdog_enable(10, true);
+        while(true) {
+            tight_loop_contents();
+        }
+    }
+    if (ctrlPressed || altPressed) {
+        uint8_t fxPressed = 0;
+        if (isInReport(report, HID_KEY_F1)) fxPressed = 1;
+        else if (isInReport(report, HID_KEY_F2)) fxPressed = 2;
+        else if (isInReport(report, HID_KEY_F3)) fxPressed = 3;
+        else if (isInReport(report, HID_KEY_F4)) fxPressed = 4;
+        else if (isInReport(report, HID_KEY_F5)) fxPressed = 5;
+        else if (isInReport(report, HID_KEY_F6)) fxPressed = 6;
+        else if (isInReport(report, HID_KEY_F7)) fxPressed = 7;
+        else if (isInReport(report, HID_KEY_F8)) fxPressed = 8;
+        fxPressedV = fxPressed;
+    }
 }
 
 Ps2Kbd_Mrmltr ps2kbd(
@@ -210,25 +238,29 @@ bool filebrowser_loadfile(const char pathname[256]) {
     multicore_lockout_start_blocking();
     auto flash_target_offset = FLASH_TARGET_OFFSET;
     const uint32_t ints = save_and_disable_interrupts();
-    flash_range_erase(flash_target_offset, fileinfo.fsize);
+    size_t count = fileinfo.fsize;
+    count += 4096;
+    count &= ~4095;
+    flash_range_erase(flash_target_offset, count);
     restore_interrupts(ints);
 
     if (FR_OK == f_open(&file, pathname, FA_READ)) {
         uint8_t buffer[FLASH_PAGE_SIZE];
 
-        for (;;) {
+        do {
             f_read(&file, &buffer, FLASH_PAGE_SIZE, &bytes_read);
-            
-            if (!bytes_read) break;
-            
-            const uint32_t ints = save_and_disable_interrupts();
-            flash_range_program(flash_target_offset, buffer, FLASH_PAGE_SIZE);
-            restore_interrupts(ints);
 
-            gpio_put(PICO_DEFAULT_LED_PIN, flash_target_offset >> 13 & 1);
+            if (bytes_read) {
+                const uint32_t ints = save_and_disable_interrupts();
+                flash_range_program(flash_target_offset, buffer, FLASH_PAGE_SIZE);
+                restore_interrupts(ints);
 
-            flash_target_offset += FLASH_PAGE_SIZE;
-        };
+                gpio_put(PICO_DEFAULT_LED_PIN, flash_target_offset >> 13 & 1);
+
+                flash_target_offset += FLASH_PAGE_SIZE;
+            }
+        }
+        while (bytes_read != 0);
 
         gpio_put(PICO_DEFAULT_LED_PIN, true);
     }
@@ -459,9 +491,20 @@ uint16_t frequencies[] = { 378, 396, 404, 408, 412, 416, 420, 424, 432 };
 uint8_t frequency_index = 0;
 
 bool overclock() {
+#if !PICO_RP2040
+    volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
+    vreg_disable_voltage_limit();
+    vreg_set_voltage(VREG_VOLTAGE_1_60);
+    sleep_ms(33);
+    *qmi_m0_timing = 0x60007204;
+    bool res = set_sys_clock_khz(frequencies[frequency_index] * KHZ, 0);
+    *qmi_m0_timing = 0x60007303;
+    return res;
+#else
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     sleep_ms(10);
     return set_sys_clock_khz(frequencies[frequency_index] * KHZ, true);
+#endif
 }
 
 bool save() {
@@ -512,9 +555,6 @@ bool load() {
     free(data);
     return true;
 }
-
-
-
 
 void load_config() {
     FIL file;
@@ -866,12 +906,18 @@ int __time_critical_func(main)() {
         memcpy(SCREEN, (void *)bezel, sizeof(bezel));
 #endif
 
-
-
-
         start_time = time_us_64();
 
-        while (!reboot) {
+        while (true) {
+            if (fxPressedV) {
+                if (altPressed) {
+                    settings.save_slot = fxPressedV;
+                    load();
+                } else if (ctrlPressed) {
+                    settings.save_slot = fxPressedV;
+                    save();
+                }
+            }
 #if VGA
             if (settings.aspect_ratio) {
                 supervision_exec_ex((uint8_t *) SCREEN + 240 * 20 + 40, 240, 0);
@@ -885,6 +931,12 @@ int __time_critical_func(main)() {
 
             if (gamepad1.bits.start && gamepad1.bits.select) {
                 menu();
+                if (reboot) { /// не работало нормально, видимо ресурсы где-то текут, пара ребутов и в даун, сделал, чтобы весь чип перегружало
+                    watchdog_enable(10, true);
+                    while(true) {
+                        tight_loop_contents();
+                    }
+                }
             }
 
 
@@ -908,7 +960,6 @@ int __time_critical_func(main)() {
             i2s_dma_write(&i2s_config, (const int16_t *) audio_buffer);
         }
 
-        reboot = false;
         supervision_reset();
     }
     __unreachable();
