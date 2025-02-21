@@ -12,7 +12,7 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-set(PICO_BOARD pico CACHE STRING "Board type")
+set(PICO_BOARD pico2 CACHE STRING "Board type")
 
 cmake_minimum_required(VERSION 3.13)
 include(pico_sdk_import.cmake)
@@ -185,8 +185,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 		SMS_SINGLE_FILE=1
 )
 
+pico_set_linker_script(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/memmap.ld")
 target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections --function-sections)
 pico_add_extra_outputs(${PROJECT_NAME})
-
-
-
