@@ -158,8 +158,9 @@ __not_in_flash_func(process_kbd_report)(hid_keyboard_report_t const* report, hid
 
 Ps2Kbd_Mrmltr ps2kbd(
     pio1,
-    0,
-    process_kbd_report);
+    PS2KBD_GPIO_FIRST,
+    process_kbd_report
+);
 
 uint_fast32_t frames = 0;
 uint64_t start_time;

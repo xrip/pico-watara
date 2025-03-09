@@ -14,8 +14,8 @@ endif()
 # ====================================================================================
 cmake_minimum_required(VERSION 3.13)
 set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/boards )
-set(PICO_PLATFORM "rp2350" CACHE STRING "Chip type")
-#set(PICO_PLATFORM "rp2040" CACHE STRING "Chip type")
+#set(PICO_PLATFORM "rp2350" CACHE STRING "Chip type")
+set(PICO_PLATFORM "rp2040" CACHE STRING "Chip type")
 #set(PICO_BOARD "murmulator" CACHE STRING "Board type")
 set(PICO_BOARD "murmulator2" CACHE STRING "Board type")
 include(pico_sdk_import.cmake)
@@ -41,7 +41,7 @@ set(I2S ON)
 #set(ILI9341 ON)
 #set(HDMI ON)
 #set(TV ON)
-#set(SOFTTV ON)
+set(SOFTTV ON)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -178,6 +178,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE SMS_SINGLE_FILE=1)
 
-pico_set_linker_script(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/memmap.ld")
 target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections --function-sections)
 pico_add_extra_outputs(${PROJECT_NAME})
