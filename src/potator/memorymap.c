@@ -124,13 +124,13 @@ static void dma_write(uint32 Addr, uint8 Value)
 {
     switch (Addr & 0x1fff) {
         case 0x08: // CBUS LO
-            dma.caddr = Value;
+            dma.caddr |= Value;
             break;
         case 0x09: // CBUS HI
             dma.caddr |= (Value << 8);
             break;
         case 0x0a: // VBUS LO
-            dma.vaddr = Value;
+            dma.vaddr |= Value;
             break;
         case 0x0b: // VBUS HI
             dma.vaddr |= (Value << 8);
@@ -151,6 +151,8 @@ static void dma_write(uint32 Addr, uint8 Value)
                         Wr6502(dma.caddr + i, upperRam[dma.vaddr + i]);
                     }
                 }
+                dma.caddr = 0;
+                dma.vaddr = 0;
             }
             break;
     }
