@@ -1,5 +1,6 @@
 #include <pico.h>
 
+#include "main.h"
 #ifdef PICO_RP2350
 #include <hardware/regs/qmi.h>
 #include <hardware/structs/qmi.h>
@@ -75,32 +76,11 @@ uint32_t rgb1;
 uint32_t rgb2;
 uint32_t rgb3;
 
-struct input_bits_t {
-    bool right: true;
-    bool left: true;
-    bool down: true;
-    bool up: true;
-    bool b: true;
-    bool a: true;
-    bool select: true;
-    bool start: true;
-};
-
-typedef struct kbd_s {
-    input_bits_t bits;
-    int8_t h_code;
-} kbd_t;
-
-typedef union {
-    input_bits_t bits;
-    uint8_t state;
-} controller;
-
 static kbd_t keyboard = {
     .bits = { false, false, false, false, false, false, false, false },
     .h_code = -1
 };
-static controller gamepad1 = { false, false, false, false, false, false, false, false };
+controller gamepad1 = { false, false, false, false, false, false, false, false };
 //static input_bits_t gamepad2_bits = { false, false, false, false, false, false, false, false };
 
 bool swap_ab = false;
@@ -1135,6 +1115,7 @@ void menu() {
 void __time_critical_func(render_core)() {
     multicore_lockout_victim_init();
 
+    tuh_init(BOARD_TUH_RHPORT);
     ps2kbd.init_gpio();
     nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
 
@@ -1172,7 +1153,7 @@ void __time_critical_func(render_core)() {
 
         tick = time_us_64();
 
-        // tuh_task();
+        tuh_task();
         // hid_app_task();
         tight_loop_contents();
     }
