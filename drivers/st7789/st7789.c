@@ -280,3 +280,6 @@ void graphics_set_palette(const uint8_t i, const uint32_t color) {
     palette[i] = (uint16_t)color;
 }
 
+void __not_in_flash_func(adjust_clk)(void) {
+//    
+}

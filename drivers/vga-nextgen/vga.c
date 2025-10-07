@@ -625,3 +625,9 @@ void clrScr(const uint8_t color) {
 
     while (size--) *t_buf++ = color << 4 | ' ';
 }
+
+void __not_in_flash_func(adjust_clk)(void) {
+    double fdiv = clock_get_hz(clk_sys) / 25175000.0; //частота пиксельклока
+    const uint32_t div32 = (uint32_t)(fdiv * (1 << 16) + 0.0);
+    PIO_VGA->sm[_SM_VGA].clkdiv = div32 & 0xfffff000; //делитель для конкретной sm
+}

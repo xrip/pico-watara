@@ -1,6 +1,12 @@
+#include <pico.h>
+
+#ifdef PICO_RP2350
+#include <hardware/regs/qmi.h>
+#include <hardware/structs/qmi.h>
+#endif
+
 #include <cstdio>
 #include <cstring>
-#include <pico.h>
 #include <hardware/flash.h>
 #include <hardware/clocks.h>
 #include <hardware/vreg.h>
@@ -45,16 +51,29 @@ typedef struct __attribute__((__packed__)) {
     uint8_t ghosting;
     uint8_t palette;
     uint8_t save_slot;
+    uint32_t rgb0;
+    uint32_t rgb1;
+    uint32_t rgb2;
+    uint32_t rgb3;
 } SETTINGS;
 
 SETTINGS settings = {
-        .version = 1,
-        .swap_ab = false,
-        .aspect_ratio = false,
-        .ghosting = 8,
-        .palette = SV_COLOR_SCHEME_WATAROO,
-        .save_slot = 0,
+    .version = 1,
+    .swap_ab = false,
+    .aspect_ratio = false,
+    .ghosting = 8,
+    .palette = SV_COLOR_SCHEME_WATAROO,
+    .save_slot = 0,
+    .rgb0 = 0xCCFFFF,
+    .rgb1 = 0xFFB266,
+    .rgb2 = 0xCC0066,
+    .rgb3 = 0x663300
 };
+
+uint32_t rgb0;
+uint32_t rgb1;
+uint32_t rgb2;
+uint32_t rgb3;
 
 struct input_bits_t {
     bool right: true;
@@ -67,12 +86,20 @@ struct input_bits_t {
     bool start: true;
 };
 
+typedef struct kbd_s {
+    input_bits_t bits;
+    int8_t h_code;
+} kbd_t;
+
 typedef union {
     input_bits_t bits;
     uint8_t state;
 } controller;
 
-static input_bits_t keyboard = { false, false, false, false, false, false, false, false };
+static kbd_t keyboard = {
+    .bits = { false, false, false, false, false, false, false, false },
+    .h_code = -1
+};
 static controller gamepad1 = { false, false, false, false, false, false, false, false };
 //static input_bits_t gamepad2_bits = { false, false, false, false, false, false, false, false };
 
@@ -82,19 +109,19 @@ void gamepad1_update() {
     nespad_read();
     
     if (settings.swap_ab) {
-        gamepad1.bits.b = keyboard.a || (nespad_state & DPAD_A) != 0;
-        gamepad1.bits.a = keyboard.b || (nespad_state & DPAD_B) != 0;
+        gamepad1.bits.b = keyboard.bits.a || (nespad_state & DPAD_A) != 0;
+        gamepad1.bits.a = keyboard.bits.b || (nespad_state & DPAD_B) != 0;
     } else {
-        gamepad1.bits.a = keyboard.a || (nespad_state & DPAD_A) != 0;
-        gamepad1.bits.b = keyboard.b || (nespad_state & DPAD_B) != 0;
+        gamepad1.bits.a = keyboard.bits.a || (nespad_state & DPAD_A) != 0;
+        gamepad1.bits.b = keyboard.bits.b || (nespad_state & DPAD_B) != 0;
     }
 
-    gamepad1.bits.select = keyboard.select || (nespad_state & DPAD_SELECT) != 0;
-    gamepad1.bits.start = keyboard.start || (nespad_state & DPAD_START) != 0;
-    gamepad1.bits.up = keyboard.up || (nespad_state & DPAD_UP) != 0;
-    gamepad1.bits.down = keyboard.down ||(nespad_state & DPAD_DOWN) != 0;
-    gamepad1.bits.left = keyboard.left || (nespad_state & DPAD_LEFT) != 0;
-    gamepad1.bits.right = keyboard.right || (nespad_state & DPAD_RIGHT) != 0;
+    gamepad1.bits.select = keyboard.bits.select || (nespad_state & DPAD_SELECT) != 0;
+    gamepad1.bits.start = keyboard.bits.start || (nespad_state & DPAD_START) != 0;
+    gamepad1.bits.up = keyboard.bits.up || (nespad_state & DPAD_UP) != 0;
+    gamepad1.bits.down = keyboard.bits.down ||(nespad_state & DPAD_DOWN) != 0;
+    gamepad1.bits.left = keyboard.bits.left || (nespad_state & DPAD_LEFT) != 0;
+    gamepad1.bits.right = keyboard.bits.right || (nespad_state & DPAD_RIGHT) != 0;
 }
 
 static bool isInReport(hid_keyboard_report_t const* report, const unsigned char keycode) {
@@ -117,21 +144,39 @@ __not_in_flash_func(process_kbd_report)(hid_keyboard_report_t const* report, hid
         printf("%2.2X", i);
     printf("\r\n");
      */
-    keyboard.start = isInReport(report, HID_KEY_ENTER) || isInReport(report, HID_KEY_KEYPAD_ENTER);
-    keyboard.select = isInReport(report, HID_KEY_BACKSPACE) || isInReport(report, HID_KEY_ESCAPE) || isInReport(report, HID_KEY_KEYPAD_ADD);
+    uint8_t h_code = -1;
+    if ( isInReport(report, HID_KEY_0) || isInReport(report, HID_KEY_KEYPAD_0)) h_code = 0;
+    else if ( isInReport(report, HID_KEY_1) || isInReport(report, HID_KEY_KEYPAD_1)) h_code = 1;
+    else if ( isInReport(report, HID_KEY_2) || isInReport(report, HID_KEY_KEYPAD_2)) h_code = 2;
+    else if ( isInReport(report, HID_KEY_3) || isInReport(report, HID_KEY_KEYPAD_3)) h_code = 3;
+    else if ( isInReport(report, HID_KEY_4) || isInReport(report, HID_KEY_KEYPAD_4)) h_code = 4;
+    else if ( isInReport(report, HID_KEY_5) || isInReport(report, HID_KEY_KEYPAD_5)) h_code = 5;
+    else if ( isInReport(report, HID_KEY_6) || isInReport(report, HID_KEY_KEYPAD_6)) h_code = 6;
+    else if ( isInReport(report, HID_KEY_7) || isInReport(report, HID_KEY_KEYPAD_7)) h_code = 7;
+    else if ( isInReport(report, HID_KEY_8) || isInReport(report, HID_KEY_KEYPAD_8)) h_code = 8;
+    else if ( isInReport(report, HID_KEY_9) || isInReport(report, HID_KEY_KEYPAD_9)) h_code = 9;
+    else if ( isInReport(report, HID_KEY_A)) h_code = 10;
+    else if ( isInReport(report, HID_KEY_B)) h_code = 11;
+    else if ( isInReport(report, HID_KEY_C)) h_code = 12;
+    else if ( isInReport(report, HID_KEY_D)) h_code = 13;
+    else if ( isInReport(report, HID_KEY_E)) h_code = 14;
+    else if ( isInReport(report, HID_KEY_F)) h_code = 15;
+    keyboard.h_code = h_code;
+    keyboard.bits.start = isInReport(report, HID_KEY_ENTER) || isInReport(report, HID_KEY_KEYPAD_ENTER);
+    keyboard.bits.select = isInReport(report, HID_KEY_BACKSPACE) || isInReport(report, HID_KEY_ESCAPE) || isInReport(report, HID_KEY_KEYPAD_ADD);
 
-    keyboard.a = isInReport(report, HID_KEY_Z) || isInReport(report, HID_KEY_O) || isInReport(report, HID_KEY_KEYPAD_0);
-    keyboard.b = isInReport(report, HID_KEY_X) || isInReport(report, HID_KEY_P) || isInReport(report, HID_KEY_KEYPAD_DECIMAL);
+    keyboard.bits.a = isInReport(report, HID_KEY_Z) || isInReport(report, HID_KEY_O) || isInReport(report, HID_KEY_KEYPAD_0);
+    keyboard.bits.b = isInReport(report, HID_KEY_X) || isInReport(report, HID_KEY_P) || isInReport(report, HID_KEY_KEYPAD_DECIMAL);
 
     bool b7 = isInReport(report, HID_KEY_KEYPAD_7);
     bool b9 = isInReport(report, HID_KEY_KEYPAD_9);
     bool b1 = isInReport(report, HID_KEY_KEYPAD_1);
     bool b3 = isInReport(report, HID_KEY_KEYPAD_3);
 
-    keyboard.up = b7 || b9 || isInReport(report, HID_KEY_ARROW_UP) || isInReport(report, HID_KEY_W) || isInReport(report, HID_KEY_KEYPAD_8);
-    keyboard.down = b1 || b3 || isInReport(report, HID_KEY_ARROW_DOWN) || isInReport(report, HID_KEY_S) || isInReport(report, HID_KEY_KEYPAD_2) || isInReport(report, HID_KEY_KEYPAD_5);
-    keyboard.left = b7 || b1 || isInReport(report, HID_KEY_ARROW_LEFT) || isInReport(report, HID_KEY_A) || isInReport(report, HID_KEY_KEYPAD_4);
-    keyboard.right = b9 || b3 || isInReport(report, HID_KEY_ARROW_RIGHT)  || isInReport(report, HID_KEY_D) || isInReport(report, HID_KEY_KEYPAD_6);
+    keyboard.bits.up = b7 || b9 || isInReport(report, HID_KEY_ARROW_UP) || isInReport(report, HID_KEY_W) || isInReport(report, HID_KEY_KEYPAD_8);
+    keyboard.bits.down = b1 || b3 || isInReport(report, HID_KEY_ARROW_DOWN) || isInReport(report, HID_KEY_S) || isInReport(report, HID_KEY_KEYPAD_2) || isInReport(report, HID_KEY_KEYPAD_5);
+    keyboard.bits.left = b7 || b1 || isInReport(report, HID_KEY_ARROW_LEFT) || isInReport(report, HID_KEY_A) || isInReport(report, HID_KEY_KEYPAD_4);
+    keyboard.bits.right = b9 || b3 || isInReport(report, HID_KEY_ARROW_RIGHT)  || isInReport(report, HID_KEY_D) || isInReport(report, HID_KEY_KEYPAD_6);
 
     altPressed = isInReport(report, HID_KEY_ALT_LEFT) || isInReport(report, HID_KEY_ALT_RIGHT);
     ctrlPressed = isInReport(report, HID_KEY_CONTROL_LEFT) || isInReport(report, HID_KEY_CONTROL_RIGHT);
@@ -162,13 +207,215 @@ Ps2Kbd_Mrmltr ps2kbd(
     process_kbd_report
 );
 
+
+
+static const uint8 palettes[SV_COLOR_SCHEME_COUNT][12] = {
+        {   /* SV_COLOR_SCHEME_DEFAULT */
+                252,  252,  252,
+                168,  168,  168,
+                84,   84,   84,
+                0,    0,    0,
+        },
+        {   /* SV_COLOR_SCHEME_AMBER */
+                252,  154,  0,
+                168,  102,  0,
+                84,   51,   0,
+                0,    0,    0,
+        },
+        {   /* SV_COLOR_SCHEME_GREEN */
+                50,   227,  50,
+                34,   151,  34,
+                17,   76,   17,
+                0,    0,    0,
+        },
+        {   /* SV_COLOR_SCHEME_BLUE */
+                0,    154,  252,
+                0,    102,  168,
+                0,    51,   84,
+                0,    0,    0,
+        },
+        {   /* SV_COLOR_SCHEME_BGB */
+                224,  248,  208,
+                136,  192,  112,
+                52,   104,  86,
+                8,    24,   32,
+        },
+        {   /* SV_COLOR_SCHEME_WATAROO */
+                0x7b, 0xc7, 0x7b,
+                0x52, 0xa6, 0x8c,
+                0x2e, 0x62, 0x60,
+                0x0d, 0x32, 0x2e,
+        },
+        {   /* SV_COLOR_SCHEME_GB_DMG */
+                0x57, 0x82, 0x00,
+                0x31, 0x74, 0x00,
+                0x00, 0x51, 0x21,
+                0x00, 0x42, 0x0C,
+        },
+        {   /* SV_COLOR_SCHEME_GB_POCKET */
+                0xA7, 0xB1, 0x9A,
+                0x86, 0x92, 0x7C,
+                0x53, 0x5f, 0x49,
+                0x2A, 0x33, 0x25,
+        },
+        {   /* SV_COLOR_SCHEME_GB_LIGHT */
+                0x01, 0xCB, 0xDF,
+                0x01, 0xB6, 0xD5,
+                0x26, 0x9B, 0xAD,
+                0x00, 0x77, 0x8D,
+        },
+        {   /* SV_COLOR_SCHEME_BLOSSOM_PINK */
+                0xF0, 0x98, 0x98,
+                0xA8, 0x6A, 0x6A,
+                0x60, 0x3C, 0x3C,
+                0x18, 0x0F, 0x0F,
+        },
+        {   /* SV_COLOR_SCHEME_BUBBLES_BLUE */
+                0x88, 0xD0, 0xF0,
+                0x5F, 0x91, 0xA8,
+                0x36, 0x53, 0x60,
+                0x0D, 0x14, 0x18,
+        },
+        {   /* SV_COLOR_SCHEME_BUTTERCUP_GREEN */
+                0xB8, 0xE0, 0x88,
+                0x80, 0x9C, 0x5F,
+                0x49, 0x59, 0x36,
+                0x12, 0x16, 0x0D,
+        },
+        {   /* SV_COLOR_SCHEME_DIGIVICE */
+                0x8C, 0x8C, 0x73,
+                0x64, 0x64, 0x53,
+                0x38, 0x38, 0x2E,
+                0x00, 0x00, 0x00,
+        },
+        {   /* SV_COLOR_SCHEME_GAME_COM */
+                0xA7, 0xBF, 0x6B,
+                0x6F, 0x8F, 0x4F,
+                0x0F, 0x4F, 0x2F,
+                0x00, 0x00, 0x00,
+        },
+        {   /* SV_COLOR_SCHEME_GAMEKING */
+                0x8C, 0xCE, 0x94,
+                0x6B, 0x9C, 0x63,
+                0x50, 0x65, 0x41,
+                0x18, 0x42, 0x21,
+        },
+        {   /* SV_COLOR_SCHEME_GAME_MASTER */
+                0x82, 0x9F, 0xA6,
+                0x5A, 0x78, 0x7E,
+                0x38, 0x4A, 0x50,
+                0x2D, 0x2D, 0x2B,
+        },
+        {   /* SV_COLOR_SCHEME_GOLDEN_WILD */
+                0xB9, 0x9F, 0x65,
+                0x81, 0x6F, 0x46,
+                0x4A, 0x3F, 0x28,
+                0x12, 0x0F, 0x0A,
+        },
+        {   /* SV_COLOR_SCHEME_GREENSCALE */
+                0x9C, 0xBE, 0x0C,
+                0x6E, 0x87, 0x0A,
+                0x2C, 0x62, 0x34,
+                0x0C, 0x36, 0x0C,
+        },
+        {   /* SV_COLOR_SCHEME_HOKAGE_ORANGE */
+                0xEA, 0x83, 0x52,
+                0xA3, 0x5B, 0x39,
+                0x5D, 0x34, 0x20,
+                0x17, 0x0D, 0x08,
+        },
+        {   /* SV_COLOR_SCHEME_LABO_FAWN */
+                0xD7, 0xAA, 0x73,
+                0x96, 0x76, 0x50,
+                0x56, 0x44, 0x2E,
+                0x15, 0x11, 0x0B,
+        },
+        {   /* SV_COLOR_SCHEME_LEGENDARY_SUPER_SAIYAN */
+                0xA5, 0xDB, 0x5A,
+                0x73, 0x99, 0x3E,
+                0x42, 0x57, 0x24,
+                0x10, 0x15, 0x09,
+        },
+        {   /* SV_COLOR_SCHEME_MICROVISION */
+                0xA0, 0xA0, 0xA0,
+                0x78, 0x78, 0x78,
+                0x50, 0x50, 0x50,
+                0x30, 0x30, 0x30,
+        },
+        {   /* SV_COLOR_SCHEME_MILLION_LIVE_GOLD */
+                0xCD, 0xB2, 0x61,
+                0x8F, 0x7C, 0x43,
+                0x52, 0x47, 0x26,
+                0x14, 0x11, 0x09,
+        },
+        {   /* SV_COLOR_SCHEME_ODYSSEY_GOLD */
+                0xC2, 0xA0, 0x00,
+                0x87, 0x70, 0x00,
+                0x4D, 0x40, 0x00,
+                0x13, 0x10, 0x00,
+        },
+        {   /* SV_COLOR_SCHEME_SHINY_SKY_BLUE */
+                0x8C, 0xB6, 0xDF,
+                0x62, 0x7F, 0x9C,
+                0x38, 0x48, 0x59,
+                0x0E, 0x12, 0x16,
+        },
+        {   /* SV_COLOR_SCHEME_SLIME_BLUE */
+                0x2F, 0x8C, 0xCC,
+                0x20, 0x62, 0x8E,
+                0x12, 0x38, 0x51,
+                0x04, 0x0E, 0x14,
+        },
+        {   /* SV_COLOR_SCHEME_TI_83 */
+                0x9C, 0xA6, 0x84,
+                0x72, 0x7C, 0x5A,
+                0x46, 0x4A, 0x35,
+                0x18, 0x18, 0x10,
+        },
+        {   /* SV_COLOR_SCHEME_TRAVEL_WOOD */
+                0xF8, 0xD8, 0xB0,
+                0xA0, 0x80, 0x58,
+                0x70, 0x50, 0x30,
+                0x48, 0x28, 0x10,
+        },
+        {   /* SV_COLOR_SCHEME_VIRTUAL_BOY */
+                0xE3, 0x00, 0x00,
+                0x95, 0x00, 0x00,
+                0x56, 0x00, 0x00,
+                0x00, 0x00, 0x00,
+        },
+        {   /* SV_TVLINK */
+                0x00, 0x00, 0x00,
+                0x00, 0x48, 0x55,
+                0x00, 0x91, 0xaa,
+                0xff, 0xff, 0xff,
+        },
+};
+
+static inline void update_palette() {
+    if (SV_COLOR_SCHEME_COUNT <= settings.palette) {
+        rgb0 = settings.rgb0;
+        rgb1 = settings.rgb1;
+        rgb2 = settings.rgb2;
+        rgb3 = settings.rgb3;
+    } else {
+        const uint8_t* palette = palettes[settings.palette];
+        rgb0 = RGB888(palette[0], palette[1], palette[2]);
+        rgb1 = RGB888(palette[3], palette[4], palette[5]);
+        rgb2 = RGB888(palette[6], palette[7], palette[8]);
+        rgb3 = RGB888(palette[9], palette[10], palette[11]);
+    }
+    graphics_set_palette(0, rgb0);
+    graphics_set_palette(1, rgb1);
+    graphics_set_palette(2, rgb2);
+    graphics_set_palette(3, rgb3);
+}
+
 uint_fast32_t frames = 0;
 uint64_t start_time;
 
-
 i2s_config_t i2s_config;
 #define AUDIO_FREQ SV_SAMPLE_RATE
-
 
 typedef struct __attribute__((__packed__)) {
     bool is_directory;
@@ -280,6 +527,8 @@ void filebrowser(const char pathname[256], const char executables[11]) {
     char tmp[TEXTMODE_COLS + 1];
     strcpy(basepath, pathname);
     constexpr int per_page = TEXTMODE_ROWS - 3;
+
+    update_palette();
 
     DIR dir;
     FILINFO fileInfo;
@@ -468,6 +717,7 @@ void filebrowser(const char pathname[256], const char executables[11]) {
 enum menu_type_e {
     NONE,
     INT,
+    HEX,
     TEXT,
     ARRAY,
 
@@ -484,28 +734,50 @@ typedef struct __attribute__((__packed__)) {
     menu_type_e type;
     const void* value;
     menu_callback_t callback;
-    uint8_t max_value;
+    uint32_t max_value;
     char value_list[45][20];
 } MenuItem;
 
-uint16_t frequencies[] = { 378, 396, 404, 408, 412, 416, 420, 424, 432 };
+uint16_t frequencies[] = { 252, 362, 366, 378, 396, 404, 408, 412, 416, 420, 424, 432 };
+#ifdef PICO_RP2040
+uint8_t frequency_index = 3;
+#else
 uint8_t frequency_index = 0;
+#endif
 
-bool overclock() {
-#if !PICO_RP2040
-    volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
+#ifndef PICO_RP2040
+static void __not_in_flash_func(flash_timings)() {
+        const int max_flash_freq = 88 * MHZ;
+        const int clock_hz = frequencies[frequency_index] * MHZ;
+        int divisor = (clock_hz + max_flash_freq - 1) / max_flash_freq;
+        if (divisor == 1 && clock_hz > 100000000) {
+            divisor = 2;
+        }
+        int rxdelay = divisor;
+        if (clock_hz / divisor > 100000000) {
+            rxdelay += 1;
+        }
+        qmi_hw->m[0].timing = 0x60007000 |
+                            rxdelay << QMI_M0_TIMING_RXDELAY_LSB |
+                            divisor << QMI_M0_TIMING_CLKDIV_LSB;
+}
+#endif
+
+bool __not_in_flash_func(overclock)() {
+#ifndef PICO_RP2040
     vreg_disable_voltage_limit();
     vreg_set_voltage(VREG_VOLTAGE_1_60);
     sleep_ms(33);
-    *qmi_m0_timing = 0x60007204;
-    bool res = set_sys_clock_khz(frequencies[frequency_index] * KHZ, 0);
-    *qmi_m0_timing = 0x60007303;
-    return res;
+    flash_timings();
 #else
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     sleep_ms(10);
-    return set_sys_clock_khz(frequencies[frequency_index] * KHZ, true);
 #endif
+    bool res = set_sys_clock_khz(frequencies[frequency_index] * KHZ, 0);
+    if (res) {
+        adjust_clk();
+    }
+    return res;
 }
 
 bool save() {
@@ -567,6 +839,10 @@ void load_config() {
         f_read(&file, &settings, sizeof(settings), &bytes_read);
         f_close(&file);
     }
+    rgb0 = settings.rgb0;
+    rgb1 = settings.rgb1;
+    rgb2 = settings.rgb2;
+    rgb3 = settings.rgb3;
 }
 
 void save_config() {
@@ -609,7 +885,7 @@ const MenuItem menu_items[] = {
         {"Swap AB <> BA: %s",     ARRAY, &settings.swap_ab,  nullptr, 1, {"NO ",       "YES"}},
         {},
         { "Ghosting pix: %i ", INT, &settings.ghosting, nullptr, 8 },
-        { "Palette: %s ", ARRAY, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT-1, {
+        { "Palette: %s ", ARRAY, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT, {
                   "DEFAULT          "
                 , "AMBER            "
                 , "GREEN            "
@@ -640,7 +916,12 @@ const MenuItem menu_items[] = {
                 , "TRAVEL_WOOD      "
                 , "VIRTUAL_BOY      "
                 , "TV-LINK          "
+                , "CUSTOM           "
          }},
+        { "RGB0: %06Xh ", HEX, &rgb0, nullptr, 0xFFFFFF },
+        { "RGB1: %06Xh ", HEX, &rgb1, nullptr, 0xFFFFFF },
+        { "RGB2: %06Xh ", HEX, &rgb2, nullptr, 0xFFFFFF },
+        { "RGB3: %06Xh ", HEX, &rgb3, nullptr, 0xFFFFFF },
 #if VGA
         { "Keep aspect ratio: %s",     ARRAY, &settings.aspect_ratio,  nullptr, 1, {"NO ",       "YES"}},
 #endif
@@ -661,7 +942,7 @@ const MenuItem menu_items[] = {
 {},
 {
     "Overclocking: %s MHz", ARRAY, &frequency_index, &overclock, count_of(frequencies) - 1,
-    { "378", "396", "404", "408", "412", "416", "420", "424", "432" }
+    { "252", "362", "366", "378", "396", "404", "408", "412", "416", "420", "424", "432" }
 },
 { "Press START / Enter to apply", NONE },
     { "Reset to ROM select", ROM_SELECT },
@@ -679,8 +960,13 @@ void menu() {
              __TIME__);
     draw_text(footer, TEXTMODE_COLS / 2 - strlen(footer) / 2, TEXTMODE_ROWS - 1, 11, 1);
     uint current_item = 0;
+    int8_t hex_digit = -1;
+    bool blink = false;
 
     while (!exit) {
+        blink = !blink;
+        bool hex_edit_mode = false;
+        int8_t h_code = keyboard.h_code;
         for (int i = 0; i < MENU_ITEMS_NUMBER; i++) {
             uint8_t y = i + (TEXTMODE_ROWS - MENU_ITEMS_NUMBER >> 1);
             uint8_t x = TEXTMODE_COLS / 2 - 10;
@@ -690,9 +976,52 @@ void menu() {
                 color = 0x01;
                 bg_color = 0xFF;
             }
+            int pal = settings.palette;
             const MenuItem* item = &menu_items[i];
             if (i == current_item) {
                 switch (item->type) {
+                    case HEX:
+                        if (item->max_value != 0 && SV_COLOR_SCHEME_COUNT <= settings.palette) {
+                            uint32_t* value = (uint32_t *)item->value;
+                            if (h_code >= 0) {
+                                if (hex_digit < 0) hex_digit = 0;
+                                uint32_t vc = *value;
+                                vc &= ~(0xF << (5 - hex_digit) * 4);
+                                vc |= ((uint32_t)h_code << (5 - hex_digit) * 4);
+                                if (++hex_digit == 6) {
+                                    hex_digit = 0;
+                                    current_item++;
+                                }
+                                if (vc < item->max_value) *value = vc;
+                                settings.rgb0 = rgb0;
+                                settings.rgb1 = rgb1;
+                                settings.rgb2 = rgb2;
+                                settings.rgb3 = rgb3;
+                                update_palette();
+                                break;
+                            }
+                            if (gamepad1.bits.right && hex_digit == 5) {
+                                hex_digit = -1;
+                            } else if (gamepad1.bits.right && hex_digit < 6) {
+                                hex_digit++;
+                            }
+                            if (h_code != 0xA) { // W/A for 'A' pressed
+                                if (gamepad1.bits.left && hex_digit == -1) {
+                                    hex_digit = 5;
+                                } else if (gamepad1.bits.left && hex_digit >= 0) {
+                                    hex_digit--;
+                                }
+                            }
+                            if (gamepad1.bits.up && hex_digit >= 0 && hex_digit <= 5) {
+                                uint32_t vc = *value + (1 << (5 - hex_digit) * 4);
+                                if (vc < item->max_value) *value = vc;
+                            }
+                            if (gamepad1.bits.down && hex_digit >= 0 && hex_digit <= 5) {
+                                uint32_t vc = *value - (1 << (5 - hex_digit) * 4);
+                                if (vc < item->max_value) *value = vc;
+                            }
+                        }
+                        break;
                     case INT:
                     case ARRAY:
                         if (item->max_value != 0) {
@@ -724,8 +1053,20 @@ void menu() {
                     exit = item->callback();
                 }
             }
+            if (pal != settings.palette) {
+                update_palette();
+            }
             static char result[TEXTMODE_COLS];
             switch (item->type) {
+                case HEX:
+                    snprintf(result, TEXTMODE_COLS, item->text, *(uint32_t*)item->value);
+                    if (i == current_item && hex_digit >= 0 && hex_digit < 6) {
+                        hex_edit_mode = true;
+                        if (blink) {
+                            result[hex_digit+6] = ' ';
+                        }
+                    }
+                    break;
                 case INT:
                     snprintf(result, TEXTMODE_COLS, item->text, *(uint8_t *)item->value);
                     break;
@@ -762,7 +1103,7 @@ void menu() {
         sleep_ms(125);
     }
 
-    supervision_set_color_scheme(settings.palette);
+    update_palette();
 #if VGA
     if (settings.aspect_ratio) {
         graphics_set_offset(40, 20);
@@ -781,6 +1122,12 @@ void menu() {
     memcpy(SCREEN, (void *)bezel, sizeof(bezel));
 #endif
     supervision_set_ghosting(settings.ghosting);
+    if (count_of(palettes) <= settings.palette) {
+        settings.rgb0 = rgb0;
+        settings.rgb1 = rgb1;
+        settings.rgb2 = rgb2;
+        settings.rgb3 = rgb3;
+    }
     save_config();
 }
 
@@ -883,7 +1230,7 @@ int __time_critical_func(main)() {
         filebrowser(HOME_DIR, "sv,bin");
 
         if (supervision_load((uint8_t *)rom, rom_size) ) {
-            supervision_set_color_scheme(settings.palette);
+            update_palette();
             supervision_set_ghosting(settings.ghosting);
         }
 
@@ -962,6 +1309,7 @@ int __time_critical_func(main)() {
         }
 
         supervision_reset();
+        update_palette();
     }
     __unreachable();
 }

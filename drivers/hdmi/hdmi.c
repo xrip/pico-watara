@@ -595,3 +595,7 @@ void clrScr(const uint8_t color) {
     if (text_buffer)
         memset(text_buffer, color, TEXTMODE_COLS * TEXTMODE_ROWS * 2);
 }
+
+void __not_in_flash_func(adjust_clk)(void) {
+//    
+}

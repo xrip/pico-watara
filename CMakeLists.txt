@@ -13,6 +13,7 @@ if (EXISTS ${picoVscode})
 endif()
 # ====================================================================================
 cmake_minimum_required(VERSION 3.13)
+set(BUILD_VERSION "2.1.4")
 set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/boards )
 set(PICO_PLATFORM "rp2350" CACHE STRING "Chip type")
 #set(PICO_PLATFORM "rp2040" CACHE STRING "Chip type")
@@ -36,7 +37,7 @@ option(m1p2launcher "Enable m1p2-launcher support" OFF)
 endif()
 
 #set(m1p2launcher ON)
-#set(I2S ON)
+set(I2S ON)
 #set(TFT ON)
 #set(ILI9341 ON)
 #set(HDMI ON)
@@ -107,7 +108,7 @@ if ( ${PICO_BOARD} MATCHES "murmulator2")
 else()
 	pico_set_program_name(watara "Watara Supervision emulator by xrip for MURMULATOR 1.x board")
 endif()
-pico_set_program_version(watara "2.1.3")
+pico_set_program_version(watara ${BUILD_VERSION})
 
 target_include_directories(${PROJECT_NAME} PRIVATE src)
 
@@ -147,10 +148,10 @@ ELSEIF(I2S_CS4334)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE I2S_CS4334)
 	SET(BUILD_NAME "${BUILD_NAME}-I2S-CS4334")
 ELSE()
-	SET(BUILD_NAME "${BUILD_NAME}-I2S-TDA1387")
+	SET(BUILD_NAME "${BUILD_NAME}-I2S")
 ENDIF()
 
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}-${BUILD_VERSION}")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
 		graphics

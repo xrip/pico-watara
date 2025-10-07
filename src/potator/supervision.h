@@ -88,11 +88,6 @@ void supervision_set_input(uint8 data);
  */
 void supervision_set_map_func(SV_MapRGBFunc func);
 /*!
- * \param colorSheme in range [0, SV_COLOR_SCHEME_COUNT - 1] or SV_COLOR_* constants.
- * \sa SV_COLOR
- */
-void supervision_set_color_scheme(int colorScheme);
-/*!
  * Add ghosting (blur). It reduces flickering.
  * \param frameCount in range [0, SV_GHOSTING_MAX]. 0 - disable.
  */
