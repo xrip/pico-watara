@@ -165,11 +165,6 @@ void supervision_set_map_func(SV_MapRGBFunc func)
     gpu_set_map_func(func);
 }
 
-void supervision_set_color_scheme(int colorScheme)
-{
-    gpu_set_color_scheme(colorScheme);
-}
-
 void supervision_set_ghosting(int frameCount)
 {
     gpu_set_ghosting(frameCount);

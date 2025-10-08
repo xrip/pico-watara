@@ -1233,3 +1233,7 @@ void graphics_set_mode(const enum graphics_mode_t mode) {
     graphics_set_modeTV(tv_out_mode);
     clrScr(0);
 }
+
+void __not_in_flash_func(adjust_clk)(void) {
+//    
+}
