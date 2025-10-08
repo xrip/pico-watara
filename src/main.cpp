@@ -968,16 +968,19 @@ void menu() {
                                 uint32_t vc = *value;
                                 vc &= ~(0xF << (5 - hex_digit) * 4);
                                 vc |= ((uint32_t)h_code << (5 - hex_digit) * 4);
+                                if (vc < item->max_value) *value = vc;
                                 if (++hex_digit == 6) {
-                                    hex_digit = 0;
+                                    h_code = -1;
+                                    hex_digit = -1;
+                                    keyboard.h_code = -1;
                                     current_item++;
                                 }
-                                if (vc < item->max_value) *value = vc;
                                 settings.rgb0 = rgb0;
                                 settings.rgb1 = rgb1;
                                 settings.rgb2 = rgb2;
                                 settings.rgb3 = rgb3;
                                 update_palette();
+                                sleep_ms(125);
                                 break;
                             }
                             if (gamepad1.bits.right && hex_digit == 5) {
@@ -1064,18 +1067,16 @@ void menu() {
             draw_text(result, x, y, color, bg_color);
         }
 
-        if (gamepad1.bits.b)
+        if (gamepad1.bits.b || (gamepad1.bits.select && !gamepad1.bits.start))
             exit = true;
 
-        if (gamepad1.bits.down) {
+        if (gamepad1.bits.down && hex_digit < 0) {
             current_item = (current_item + 1) % MENU_ITEMS_NUMBER;
-
             if (menu_items[current_item].type == NONE)
                 current_item++;
         }
-        if (gamepad1.bits.up) {
+        if (gamepad1.bits.up && hex_digit < 0) {
             current_item = (current_item - 1 + MENU_ITEMS_NUMBER) % MENU_ITEMS_NUMBER;
-
             if (menu_items[current_item].type == NONE)
                 current_item--;
         }
@@ -1083,7 +1084,6 @@ void menu() {
         sleep_ms(125);
     }
 
-    update_palette();
 #if VGA
     if (settings.aspect_ratio) {
         graphics_set_offset(40, 20);
