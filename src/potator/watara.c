@@ -83,7 +83,7 @@ static inline uint8_t __time_critical_func(convert_to_rich_format)(uint8_t v) {
     return ((v & 1) ? 0b1111 : 0) | (((v >> 1) & 1) ? 0b11110000: 0);
 }
 
-void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, int16 backbufferWidth, BOOL skipFrame, uint8_t ghosting)
+void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, uint32 backbufferWidth, BOOL skipFrame, uint8_t ghosting)
 {
     // Number of iterations = 256 * 256 / m6502_registers.IPeriod
     for (uint32 i = 0; i < 256; ++i) {
@@ -120,10 +120,11 @@ void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, int16 backbuff
         }
         uint8_t ghost_speed = ghosting < 7 ? (7 - ghosting) : 1;
         ghosting = (0xFF >> (ghosting + 1)); // mask to extend values
+        size_t bytes_written = p_exp - expected_screen;
         p_exp = expected_screen;
         uint8_t* p_out = backbuffer;
         uint8_t* p_rich = rich_screen;
-        for (int i = 0; i < sizeof(rich_screen); ++i) {
+        for (int i = 0; i < bytes_written; ++i) {
             uint8_t new_v = *p_exp++;
             uint8_t pre_v = *p_rich;
             uint8_t v;

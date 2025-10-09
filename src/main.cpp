@@ -1245,12 +1245,14 @@ int __time_critical_func(main)() {
             }
 #if VGA
             if (settings.aspect_ratio) {
-                supervision_exec_ex((uint8_t *) SCREEN + 240 * 20 + 40, 240, 0, settings.ghosting);
+                uint32_t sw_w = 240;
+                supervision_exec_ex((uint8_t *) SCREEN + sw_w * 20 + 40, sw_w, 0, settings.ghosting);
             } else {
                 supervision_exec_ex((uint8_t *) SCREEN, SV_W, 0, settings.ghosting);
             }
 #else
-                supervision_exec_ex((uint8_t *) SCREEN + 240 * 20 + 40, 240, 0);
+                uint32_t sw_w = 240;
+                supervision_exec_ex((uint8_t *) SCREEN + sw_w * 20 + 40, sw_w, 0, settings.ghosting);
 #endif
             // for(int x = 0; x <64; x++) graphics_set_palette(x, RGB888(bitmap.pal.color[x][0], bitmap.pal.color[x][1], bitmap.pal.color[x][2]));
 
