@@ -61,10 +61,6 @@ enum SV_COLOR {
     , SV_COLOR_SCHEME_COUNT
 };
 
-/*!
- * \sa supervision_set_ghosting()
- */
-#define SV_GHOSTING_MAX 8
  /*!
   * \sa supervision_update_sound()
   */
@@ -77,7 +73,7 @@ void supervision_done(void);
  * \return TRUE - success, FALSE - error
  */
 BOOL supervision_load(const uint8 *rom, uint32 romSize);
-void supervision_exec_ex(uint8 *backbuffer, int16 backbufferWidth, BOOL skipFrame);
+void supervision_exec_ex(uint8 *backbuffer, uint32 backbufferWidth, BOOL skipFrame, uint8_t ghosting);
 
 /*!
  * \param data Bits 0-7: Right, Left, Down, Up, B, A, Select, Start.
@@ -87,11 +83,6 @@ void supervision_set_input(uint8 data);
  * \param func Default: RGB888 -> RGB555 (RGBA5551), R - least significant.
  */
 void supervision_set_map_func(SV_MapRGBFunc func);
-/*!
- * Add ghosting (blur). It reduces flickering.
- * \param frameCount in range [0, SV_GHOSTING_MAX]. 0 - disable.
- */
-void supervision_set_ghosting(int frameCount);
 
 uint32 supervision_save_state_buf_size(void);
 BOOL supervision_save_state_buf(uint8 *data, uint32 size);

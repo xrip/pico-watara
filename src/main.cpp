@@ -62,7 +62,7 @@ SETTINGS settings = {
     .version = 1,
     .swap_ab = false,
     .aspect_ratio = false,
-    .ghosting = 8,
+    .ghosting = 4,
     .palette = SV_COLOR_SCHEME_WATAROO,
     .save_slot = 0,
     .rgb0 = 0xCCFFFF,
@@ -186,8 +186,6 @@ Ps2Kbd_Mrmltr ps2kbd(
     PS2KBD_GPIO_FIRST,
     process_kbd_report
 );
-
-
 
 static const uint8 palettes[SV_COLOR_SCHEME_COUNT][12] = {
         {   /* SV_COLOR_SCHEME_DEFAULT */
@@ -813,7 +811,6 @@ void load_config() {
     FIL file;
     char pathname[256];
     sprintf(pathname, "%s\\emulator.cfg", HOME_DIR);
-
     if (FR_OK == f_mount(&fs, "", 1) && FR_OK == f_open(&file, pathname, FA_READ)) {
         UINT bytes_read;
         f_read(&file, &settings, sizeof(settings), &bytes_read);
@@ -823,6 +820,7 @@ void load_config() {
     rgb1 = settings.rgb1;
     rgb2 = settings.rgb2;
     rgb3 = settings.rgb3;
+    if (settings.ghosting > 6) settings.ghosting = 4;
 }
 
 void save_config() {
@@ -864,7 +862,7 @@ bool toggle_color() {
 const MenuItem menu_items[] = {
         {"Swap AB <> BA: %s",     ARRAY, &settings.swap_ab,  nullptr, 1, {"NO ",       "YES"}},
         {},
-        { "Ghosting pix: %i ", INT, &settings.ghosting, nullptr, 8 },
+        { "Ghosting pix: %i ", INT, &settings.ghosting, nullptr, 6 },
         { "Palette: %s ", ARRAY, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT, {
                   "DEFAULT          "
                 , "AMBER            "
@@ -968,16 +966,19 @@ void menu() {
                                 uint32_t vc = *value;
                                 vc &= ~(0xF << (5 - hex_digit) * 4);
                                 vc |= ((uint32_t)h_code << (5 - hex_digit) * 4);
+                                if (vc < item->max_value) *value = vc;
                                 if (++hex_digit == 6) {
-                                    hex_digit = 0;
+                                    h_code = -1;
+                                    hex_digit = -1;
+                                    keyboard.h_code = -1;
                                     current_item++;
                                 }
-                                if (vc < item->max_value) *value = vc;
                                 settings.rgb0 = rgb0;
                                 settings.rgb1 = rgb1;
                                 settings.rgb2 = rgb2;
                                 settings.rgb3 = rgb3;
                                 update_palette();
+                                sleep_ms(125);
                                 break;
                             }
                             if (gamepad1.bits.right && hex_digit == 5) {
@@ -1064,18 +1065,16 @@ void menu() {
             draw_text(result, x, y, color, bg_color);
         }
 
-        if (gamepad1.bits.b)
+        if (gamepad1.bits.b || (gamepad1.bits.select && !gamepad1.bits.start))
             exit = true;
 
-        if (gamepad1.bits.down) {
+        if (gamepad1.bits.down && hex_digit < 0) {
             current_item = (current_item + 1) % MENU_ITEMS_NUMBER;
-
             if (menu_items[current_item].type == NONE)
                 current_item++;
         }
-        if (gamepad1.bits.up) {
+        if (gamepad1.bits.up && hex_digit < 0) {
             current_item = (current_item - 1 + MENU_ITEMS_NUMBER) % MENU_ITEMS_NUMBER;
-
             if (menu_items[current_item].type == NONE)
                 current_item--;
         }
@@ -1083,7 +1082,6 @@ void menu() {
         sleep_ms(125);
     }
 
-    update_palette();
 #if VGA
     if (settings.aspect_ratio) {
         graphics_set_offset(40, 20);
@@ -1101,7 +1099,6 @@ void menu() {
     graphics_set_mode(GRAPHICSMODE_DEFAULT);
     memcpy(SCREEN, (void *)bezel, sizeof(bezel));
 #endif
-    supervision_set_ghosting(settings.ghosting);
     if (count_of(palettes) <= settings.palette) {
         settings.rgb0 = rgb0;
         settings.rgb1 = rgb1;
@@ -1212,7 +1209,6 @@ int __time_critical_func(main)() {
 
         if (supervision_load((uint8_t *)rom, rom_size) ) {
             update_palette();
-            supervision_set_ghosting(settings.ghosting);
         }
 
 #if VGA
@@ -1249,12 +1245,14 @@ int __time_critical_func(main)() {
             }
 #if VGA
             if (settings.aspect_ratio) {
-                supervision_exec_ex((uint8_t *) SCREEN + 240 * 20 + 40, 240, 0);
+                uint32_t sw_w = 240;
+                supervision_exec_ex((uint8_t *) SCREEN + sw_w * 20 + 40, sw_w, 0, settings.ghosting);
             } else {
-                supervision_exec_ex((uint8_t *) SCREEN, SV_W, 0);
+                supervision_exec_ex((uint8_t *) SCREEN, SV_W, 0, settings.ghosting);
             }
 #else
-                supervision_exec_ex((uint8_t *) SCREEN + 240 * 20 + 40, 240, 0);
+                uint32_t sw_w = 240;
+                supervision_exec_ex((uint8_t *) SCREEN + sw_w * 20 + 40, sw_w, 0, settings.ghosting);
 #endif
             // for(int x = 0; x <64; x++) graphics_set_palette(x, RGB888(bitmap.pal.color[x][0], bitmap.pal.color[x][1], bitmap.pal.color[x][2]));
 

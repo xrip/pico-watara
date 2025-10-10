@@ -24,8 +24,6 @@ static SV_MapRGBFunc mapRGB = rgb555;
 
 //uint32 watara_palette[4];
 
-int ghostCount = 8;
-
 /*
 static uint8 screenBuffer8[SV_H][SV_W] = { 0 };
 
@@ -51,123 +49,14 @@ void gpu_init(void) {
 
 void gpu_reset(void) {
     gpu_set_map_func(NULL);
-    // gpu_set_ghosting(0);
 }
 
 void gpu_done(void) {
 //    free(watara_palette); watara_palette = NULL;
-    // gpu_set_ghosting(0);
 }
 
 void gpu_set_map_func(SV_MapRGBFunc func) {
     //   mapRGB = func;
     // if (mapRGB == NULL)
     //   mapRGB = rgb555;
-}
-
-/*
-
-void __time_critical_func(gpu_render_scanline2)(uint32 scanline, uint8 *backbuffer, uint8 innerx, uint8 size) {
-    uint8 *vram_line = memorymap_getUpperRamPointer() + scanline;
-    uint8 x, j = innerx, b = 0;
-
-    // #1
-    if (j & 3) {
-        b = *vram_line++;
-        b >>= (j & 3) * 2;
-    }
-//#pragma GCC unroll 320
-    if (ghostCount) {
-        for (x = 0; x < size; x++, j++) {
-            if (!(j & 3)) {
-                b = *(vram_line++);
-            }
-            //int color = (b & 3); // curr. state in 2 bits format
-            {
-                int c8 = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
-                int c8n = (b & 3) << 4; // new state in 8 bit format
-                if (c8n < c8) c8n = c8;
-                backbuffer[x] = c8n;
-
-                // save it to next step
-                b >>= 2;
-            }
-        }
-    } else {
-        for (x = 0; x < size; x++, j++) {
-            if (!(j & 3)) {
-                b = *(vram_line++);
-            }
-            backbuffer[x] = (b & 3) << 4;
-            // save it to next step
-            b >>= 2;
-        }
-    }
-
-}
-
-*/
-void __time_critical_func(gpu_render_scanline)(uint32 scanline, uint8 *backbuffer, uint8 innerx, uint8 size) {
-    uint8 *vram_line = memorymap_getUpperRamPointer() + scanline;
-    uint8 x = 0, j = innerx & 3;
-    static int previous_color, current_color = 0;
-
-    uint8 b = *vram_line++;
-
-    if (j) {
-        b >>= j * 2;
-    }
-
-    if (ghostCount) {
-#pragma GCC unroll 4
-        while (x < size) {
-            backbuffer[x++] = (b & 3) << 4;
-            b >>= 2;
-            backbuffer[x++] = (b & 3) << 4;
-            b >>= 2;
-            backbuffer[x++] = (b & 3) << 4;
-            b >>= 2;
-            backbuffer[x++] = (b & 3) << 4;
-
-            b = *vram_line++;
-        }
-    } else {
-#pragma GCC unroll 4
-        while (x < size) {
-            previous_color = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
-            current_color = (b & 3) << 4; // new state in 8 bit format
-            if (current_color < previous_color) current_color = previous_color;
-            backbuffer[x++] = current_color;
-            b >>= 2;
-
-            previous_color = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
-            current_color = (b & 3) << 4; // new state in 8 bit format
-            if (current_color < previous_color) current_color = previous_color;
-            backbuffer[x++] = current_color;
-            b >>= 2;
-
-            previous_color = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
-            current_color = (b & 3) << 4; // new state in 8 bit format
-            if (current_color < previous_color) current_color = previous_color;
-            backbuffer[x++] = current_color;
-            b >>= 2;
-
-            previous_color = backbuffer[x] - 4; // prev. state in 8 bit format (reduced to 1/gh)
-            current_color = (b & 3) << 4; // new state in 8 bit format
-            if (current_color < previous_color) current_color = previous_color;
-            backbuffer[x++] = current_color;
-
-            b = *vram_line++;
-        }
-    }
-}
-
-void gpu_set_ghosting(int frameCount) {
-    int i;
-    if (frameCount < 0)
-        ghostCount = 0;
-    else if (frameCount > SV_GHOSTING_MAX)
-        ghostCount = SV_GHOSTING_MAX;
-    else
-        ghostCount = frameCount;
 }

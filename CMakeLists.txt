@@ -19,11 +19,11 @@ set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/boards )
 #set(PICO_PLATFORM "rp2040" CACHE STRING "Chip type")
 set(PICO_PLATFORM "rp2350" CACHE STRING "Chip type")
 
-#set(PICO_BOARD "murmulator" CACHE STRING "Board type")
+set(PICO_BOARD "murmulator" CACHE STRING "Board type")
 #set(PICO_BOARD "murmulator2" CACHE STRING "Board type")
 #set(PICO_BOARD "olimex-pico-pc" CACHE STRING "Board type")
 #set(PICO_BOARD "waveshare_rp2040_pizero" CACHE STRING "Board type")
-set(PICO_BOARD "waveshare_rp2350_pizero" CACHE STRING "Board type")
+#set(PICO_BOARD "waveshare_rp2350_pizero" CACHE STRING "Board type")
 
 include(pico_sdk_import.cmake)
 
@@ -48,7 +48,7 @@ set(I2S ON)
 
 #set(TFT ON)
 #set(ILI9341 ON)
-set(HDMI ON)
+#set(HDMI ON)
 #set(TV ON)
 #set(SOFTTV ON)
 
