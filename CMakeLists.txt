@@ -48,7 +48,7 @@ set(I2S ON)
 
 #set(TFT ON)
 #set(ILI9341 ON)
-set(HDMI ON)
+#set(HDMI ON)
 #set(TV ON)
 #set(SOFTTV ON)
 

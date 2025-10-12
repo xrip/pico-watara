@@ -44,6 +44,7 @@ bool limit_fps = true;
 semaphore vga_start_semaphore;
 
 uint8_t SCREEN[200][240];
+uint8_t TEXT_BUFFER[TEXTMODE_COLS*TEXTMODE_ROWS*2];
 
 typedef struct __attribute__((__packed__)) {
     uint8_t version;
@@ -394,6 +395,14 @@ static const uint8 palettes[SV_COLOR_SCHEME_COUNT][12] = {
         },
 };
 
+const int base_bezel = 128;
+
+static inline uint32_t fast1of32(uint32_t v, int i) {
+///    return (uint32_t)((v / 32.0) * (i + 1)) & 0xFF;
+////    v -= (v / 32) * (32 - i);
+    return v & 0xFF;
+}
+
 static inline void update_palette() {
     if (SV_COLOR_SCHEME_COUNT <= settings.palette) {
         rgb0 = settings.rgb0;
@@ -407,10 +416,42 @@ static inline void update_palette() {
         rgb2 = RGB888(palette[6], palette[7], palette[8]);
         rgb3 = RGB888(palette[9], palette[10], palette[11]);
     }
-    graphics_set_palette(0, rgb0);
-    graphics_set_palette(1, rgb1);
-    graphics_set_palette(2, rgb2);
-    graphics_set_palette(3, rgb3);
+    uint32_t r, g, b;
+    r = rgb0 >> 16;
+    g = (rgb0 >> 8) & 0xFF;
+    b = rgb0 & 0xFF;
+    for (int i = 0; i < 32; ++i) {
+        graphics_set_palette(i, RGB888(fast1of32(r, i), fast1of32(g, i), fast1of32(b, i)));
+    }
+    r = rgb1 >> 16;
+    g = (rgb1 >> 8) & 0xFF;
+    b = rgb1 & 0xFF;
+    for (int i = 0; i < 32; ++i) {
+        graphics_set_palette(i + 32, RGB888(fast1of32(r, i), fast1of32(g, i), fast1of32(b, i)));
+    }
+    r = rgb2 >> 16;
+    g = (rgb2 >> 8) & 0xFF;
+    b = rgb2 & 0xFF;
+    for (int i = 0; i < 32; ++i) {
+        graphics_set_palette(i + 64, RGB888(fast1of32(r, i), fast1of32(g, i), fast1of32(b, i)));
+    }
+    r = rgb3 >> 16;
+    g = (rgb3 >> 8) & 0xFF;
+    b = rgb3 & 0xFF;
+    for (int i = 0; i < 32; ++i) {
+        graphics_set_palette(i + 96, RGB888(fast1of32(r, i), fast1of32(g, i), fast1of32(b, i)));
+    }
+
+    if (settings.aspect_ratio) {
+        graphics_set_palette((base_bezel + 0), RGB888(0xff, 0xff, 0xff));
+        graphics_set_palette((base_bezel + 1), RGB888(0x00, 0x00, 0x00));
+        graphics_set_palette((base_bezel + 2), RGB888(0xff, 0x00, 0x00));
+        graphics_set_palette((base_bezel + 3), RGB888(0xff, 0xff, 0x00));
+        graphics_set_palette((base_bezel + 4), RGB888(0x00, 0xff, 0x00));
+        graphics_set_palette((base_bezel + 5), RGB888(0x00, 0xff, 0xff));
+        graphics_set_palette((base_bezel + 6), RGB888(0x00, 0x00, 0xff));
+        graphics_set_palette((base_bezel + 7), RGB888(0xff, 0x00, 0xff));
+    }
 }
 
 uint_fast32_t frames = 0;
@@ -427,7 +468,7 @@ typedef struct __attribute__((__packed__)) {
 } file_item_t;
 
 constexpr int max_files = 600;
-file_item_t * fileItems = (file_item_t *)(&SCREEN[0][0] + TEXTMODE_COLS*TEXTMODE_ROWS*2);
+file_item_t * fileItems = (file_item_t *)(&SCREEN[0][0]);
 
 int compareFileItems(const void* a, const void* b) {
     const auto* itemA = (file_item_t *)a;
@@ -886,7 +927,7 @@ bool toggle_color() {
 const MenuItem menu_items[] = {
         {"Swap AB <> BA: %s",     ARRAY, &settings.swap_ab,  nullptr, 1, {"NO ",       "YES"}},
         {},
-        { "Ghosting pix: %i ", INT, &settings.ghosting, nullptr, 6 },
+        { "Ghosting pix: %i ", INT, &settings.ghosting, nullptr, 5 },
         { "Palette: %s ", ARRAY, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT, {
                   "DEFAULT          " // 0
                 , "WATAROO          " // 1
@@ -959,6 +1000,7 @@ const MenuItem menu_items[] = {
 void menu() {
     bool exit = false;
     graphics_set_mode(TEXTMODE_DEFAULT);
+    memset(TEXT_BUFFER, 0, sizeof(TEXT_BUFFER));
     char footer[TEXTMODE_COLS];
     snprintf(footer, TEXTMODE_COLS, ":: %s ::", PICO_PROGRAM_NAME);
     draw_text(footer, TEXTMODE_COLS / 2 - strlen(footer) / 2, 0, 11, 1);
@@ -1115,17 +1157,13 @@ void menu() {
         graphics_set_offset(40, 20);
         graphics_set_buffer((uint8_t *)SCREEN, 240, 200);
         graphics_set_mode(GRAPHICSMODE_ASPECT);
-        memcpy(SCREEN, (void *)bezel, sizeof(bezel));
-
     } else {
         graphics_set_buffer((uint8_t *)SCREEN, SV_W, SV_H);
         graphics_set_offset(0, 0);
-
         graphics_set_mode(GRAPHICSMODE_DEFAULT);
     }
 #else
     graphics_set_mode(GRAPHICSMODE_DEFAULT);
-    memcpy(SCREEN, (void *)bezel, sizeof(bezel));
 #endif
     if (count_of(palettes) <= settings.palette) {
         settings.rgb0 = rgb0;
@@ -1148,7 +1186,7 @@ void __time_critical_func(render_core)() {
 
     const auto buffer = (uint8_t *)SCREEN;
     graphics_set_buffer(buffer, 240, 200);
-    graphics_set_textbuffer(buffer);
+    graphics_set_textbuffer(TEXT_BUFFER);
     graphics_set_bgcolor(0x000000);
 #if VGA
     graphics_set_offset(0, 0);
@@ -1219,16 +1257,7 @@ int __time_critical_func(main)() {
     i2s_init(&i2s_config);
 
     supervision_init();
-
-    graphics_set_palette((3 + 1), RGB888(0xff, 0xff, 0xff));
-    graphics_set_palette((3 + 2), RGB888(0x00, 0x00, 0x00));
-    graphics_set_palette((3 + 3), RGB888(0xff, 0x00, 0x00));
-    graphics_set_palette((3 + 4), RGB888(0xff, 0xff, 0x00));
-    graphics_set_palette((3 + 5), RGB888(0x00, 0xff, 0x00));
-    graphics_set_palette((3 + 6), RGB888(0x00, 0xff, 0xff));
-    graphics_set_palette((3 + 7), RGB888(0x00, 0x00, 0xff));
-    graphics_set_palette((3 + 8), RGB888(0xff, 0x00, 0xff));
-
+    update_palette();
 
     while (true) {
 
@@ -1244,19 +1273,19 @@ int __time_critical_func(main)() {
             graphics_set_offset(40, 20);
             graphics_set_buffer((uint8_t *)SCREEN, 240, 200);
             graphics_set_mode(GRAPHICSMODE_ASPECT);
-            memcpy(SCREEN, (void *)bezel, sizeof(bezel));
+            uint8_t* screen = (uint8_t*)SCREEN;
+            for (int i = 0; i < sizeof(bezel); ++i) {
+                screen[i] = (bezel[i] >> 4) - 4 + base_bezel;
+            }
         } else {
             graphics_set_buffer((uint8_t *)SCREEN, SV_W, SV_H);
             graphics_set_offset(0, 0);
-
             graphics_set_mode(GRAPHICSMODE_DEFAULT);
         }
-
 #else
         settings.aspect_ratio = false;
         graphics_set_buffer((uint8_t *)SCREEN, 240, 200);
         graphics_set_mode(GRAPHICSMODE_DEFAULT);
-        memcpy(SCREEN, (void *)bezel, sizeof(bezel));
 #endif
 
         start_time = time_us_64();
@@ -1290,6 +1319,12 @@ int __time_critical_func(main)() {
                     watchdog_enable(10, true);
                     while(true) {
                         tight_loop_contents();
+                    }
+                }
+                if (settings.aspect_ratio) {
+                    uint8_t* screen = (uint8_t*)SCREEN;
+                    for (int i = 0; i < sizeof(bezel); ++i) {
+                        screen[i] = (bezel[i] >> 4) - 4 + base_bezel;
                     }
                 }
             }
