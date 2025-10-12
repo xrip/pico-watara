@@ -399,8 +399,9 @@ const int base_bezel = 128;
 
 static inline uint32_t fast1of32(uint32_t v, int i) {
 ///    return (uint32_t)((v / 32.0) * (i + 1)) & 0xFF;
-////    v -= (v / 32) * (32 - i);
-    return v & 0xFF;
+    v -= (31 - i);
+    if (v > 0xFF) v = 0;
+    return v;
 }
 
 static inline void update_palette() {

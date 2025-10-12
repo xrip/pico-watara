@@ -111,28 +111,51 @@ void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, uint32 backbuf
         if (size > SV_W)
             size = SV_W; // 192: Chimera, Matta Blatta, Tennis Pro '92
 
-        uint8_t ghost_speed = ghosting < 6 ? (6 - ghosting) : 1;
-        ghosting = (0xFF >> (ghosting + 1)); // mask to extend values
         uint8_t* p_out = backbuffer;
-        for (uint32 i = 0; i < SV_H; ++i) {
-            if (scanline >= 0x1fe0) {
-                scanline -= 0x1fe0; // SSSnake
+        if (!ghosting) {
+            for (uint32 i = 0; i < SV_H; ++i) {
+                if (scanline >= 0x1fe0) {
+                    scanline -= 0x1fe0; // SSSnake
+                }
+                uint8 *vram_line = upperRam + scanline;
+                uint8 x = 0;
+                uint8 b = *vram_line++;
+                if (innerx) {
+                    b >>= innerx * 2;
+                }
+                #pragma GCC unroll 4
+                while (x < size) {
+                    p_out[x++] = (b & 0b11) << 5; b >>= 2;
+                    p_out[x++] = (b & 0b11) << 5; b >>= 2;
+                    p_out[x++] = (b & 0b11) << 5; b >>= 2;
+                    p_out[x++] = (b & 0b11) << 5; b = *vram_line++;
+                }
+                p_out += backbufferWidth;
+                scanline += 0x30;
             }
-            uint8 *vram_line = upperRam + scanline;
-            uint8 x = 0;
-            uint8 b = *vram_line++;
-            if (innerx) {
-                b >>= innerx * 2;
+        } else {
+            uint8_t ghost_speed = ghosting < 6 ? (6 - ghosting) : 1;
+            ghosting = (0xFF >> (ghosting + 2)); // mask to extend values
+            for (uint32 i = 0; i < SV_H; ++i) {
+                if (scanline >= 0x1fe0) {
+                    scanline -= 0x1fe0; // SSSnake
+                }
+                uint8 *vram_line = upperRam + scanline;
+                uint8 x = 0;
+                uint8 b = *vram_line++;
+                if (innerx) {
+                    b >>= innerx * 2;
+                }
+                #pragma GCC unroll 4
+                while (x < size) {
+                    p_out[x++] = convert_to_rich_format(b, p_out[x], ghost_speed, ghosting); b >>= 2;
+                    p_out[x++] = convert_to_rich_format(b, p_out[x], ghost_speed, ghosting); b >>= 2;
+                    p_out[x++] = convert_to_rich_format(b, p_out[x], ghost_speed, ghosting); b >>= 2;
+                    p_out[x++] = convert_to_rich_format(b, p_out[x], ghost_speed, ghosting); b = *vram_line++;
+                }
+                p_out += backbufferWidth;
+                scanline += 0x30;
             }
-#pragma GCC unroll 4
-            while (x < size) {
-                p_out[x++] = convert_to_rich_format(b, p_out[x], ghost_speed, ghosting); b >>= 2;
-                p_out[x++] = convert_to_rich_format(b, p_out[x], ghost_speed, ghosting); b >>= 2;
-                p_out[x++] = convert_to_rich_format(b, p_out[x], ghost_speed, ghosting); b >>= 2;
-                p_out[x++] = convert_to_rich_format(b, p_out[x], ghost_speed, ghosting); b = *vram_line++;
-            }
-            p_out += backbufferWidth;
-            scanline += 0x30;
         }
     }
     if (Rd6502(0x2026) & 0x01)
