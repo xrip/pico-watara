@@ -77,19 +77,24 @@ BOOL supervision_load(const uint8 *rom, uint32 romSize)
 }
 
 static inline uint8_t __time_critical_func(convert_to_rich_format)(uint8_t v2b, uint8_t pre_v, uint8_t ghost_speed, uint8_t ghosting) {
-    uint8_t pre_v5 = (pre_v & 0b11111);
-    if ((pre_v >> 5) == v2b) {
-        uint8_t new_v = ((v2b & 0b11) << 5) | 0b11111;
-        uint8_t v = (pre_v5 << ghost_speed) | ghosting | ((v2b & 0b11) << 5);
-        if (v > new_v) v = new_v;
+    // новый код палитры
+    v2b &= 0b11;
+    // старый код палитры
+    uint8_t p2b = (pre_v >> 5) & 0b11;
+    // старый код интенсивности
+    uint8_t pre_v5 = pre_v & 0b11111;
+    if (p2b == v2b) { // коды палитры совпадают
+        uint8_t new_v = (v2b << 5) | 0b11111; // стремимся к этому значению
+        uint8_t v = (pre_v5 << ghost_speed) | ghosting | (v2b << 5);
+        if (v > new_v) v = new_v; // как-то получилось больше... как?
         return v;
     }
-    if (pre_v5 == 0) {
-        return ((v2b & 0b11) << 5);
+    if (pre_v5 != 0) { 
+        // код палитры сменился, уменьшаем интенсивность, но не меняем пока код самой палитры
+        return (pre_v5 >> ghost_speed) | (pre_v & 0b1100000);
     }
-    uint8_t new_v = ((v2b & 0b11) << 5) | 0b11111;
-    uint8_t v = (pre_v5 >> ghost_speed) | (pre_v & 0b1100000);
-    return v;
+    // код палитры сменился, а интенсивность старой пришла в ноль
+    return (v2b << 5) | ghosting; // возвращаем новый код палитры и минимальное дополнение перед сдвигом
 }
 
 void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, uint32 backbufferWidth, BOOL skipFrame, uint8_t ghosting)
