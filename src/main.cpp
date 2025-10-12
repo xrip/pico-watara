@@ -194,6 +194,42 @@ static const uint8 palettes[SV_COLOR_SCHEME_COUNT][12] = {
                 84,   84,   84,
                 0,    0,    0,
         },
+        {   /* SV_COLOR_SCHEME_WATAROO */
+                0x7b, 0xc7, 0x7b,
+                0x52, 0xa6, 0x8c,
+                0x2e, 0x62, 0x60,
+                0x0d, 0x32, 0x2e,
+        },
+        {   /* SV_COLOR_SCHEME_BGB */
+                224,  248,  208,
+                136,  192,  112,
+                52,   104,  86,
+                8,    24,   32,
+        },
+        { // OCEAN SAND  
+            0xD4, 0xFF, 0xF3,
+            0x34, 0x9B, 0xC0,
+            0xF7, 0x90, 0x36,
+            0x00, 0x52, 0x52
+        },
+        { // AUTUMN FOREST  
+            0xD4, 0xFF, 0xFD,
+            0x13, 0x95, 0x66,
+            0xF7, 0x90, 0x36,
+            0x00, 0x52, 0x52
+        },
+        { // RED FOX
+            0xD4, 0xFF, 0xFD,
+            0xE8, 0xAE, 0x74,
+            0xBD, 0x5F, 0x00,
+            0x6B, 0x04, 0x00
+        },
+        { // MINT SAND  
+            0xD4, 0xFF, 0xFD,
+            0xFF, 0x80, 0x00,
+            0x00, 0x99, 0x99,
+            0x00, 0x52, 0x52
+        },
         {   /* SV_COLOR_SCHEME_AMBER */
                 252,  154,  0,
                 168,  102,  0,
@@ -211,18 +247,6 @@ static const uint8 palettes[SV_COLOR_SCHEME_COUNT][12] = {
                 0,    102,  168,
                 0,    51,   84,
                 0,    0,    0,
-        },
-        {   /* SV_COLOR_SCHEME_BGB */
-                224,  248,  208,
-                136,  192,  112,
-                52,   104,  86,
-                8,    24,   32,
-        },
-        {   /* SV_COLOR_SCHEME_WATAROO */
-                0x7b, 0xc7, 0x7b,
-                0x52, 0xa6, 0x8c,
-                0x2e, 0x62, 0x60,
-                0x0d, 0x32, 0x2e,
         },
         {   /* SV_COLOR_SCHEME_GB_DMG */
                 0x57, 0x82, 0x00,
@@ -864,12 +888,16 @@ const MenuItem menu_items[] = {
         {},
         { "Ghosting pix: %i ", INT, &settings.ghosting, nullptr, 6 },
         { "Palette: %s ", ARRAY, &settings.palette, nullptr, SV_COLOR_SCHEME_COUNT, {
-                  "DEFAULT          "
+                  "DEFAULT          " // 0
+                , "WATAROO          " // 1
+                , "BGB              " // 2
+                , "OCEAN SAND       "
+                , "AUTUMN FOREST    "
+                , "RED FOX          "
+                , "MINT SAND        "
                 , "AMBER            "
                 , "GREEN            "
                 , "BLUE             "
-                , "BGB              "
-                , "WATAROO          "
                 , "GB_DMG           "
                 , "GB_POCKET        "
                 , "GB_LIGHT         "
