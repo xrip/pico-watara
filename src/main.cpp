@@ -443,16 +443,14 @@ static inline void update_palette() {
         graphics_set_palette(i + 96, RGB888(fast1of32(r, i), fast1of32(g, i), fast1of32(b, i)));
     }
 
-    if (settings.aspect_ratio) {
-        graphics_set_palette((base_bezel + 0), RGB888(0xff, 0xff, 0xff));
-        graphics_set_palette((base_bezel + 1), RGB888(0x00, 0x00, 0x00));
-        graphics_set_palette((base_bezel + 2), RGB888(0xff, 0x00, 0x00));
-        graphics_set_palette((base_bezel + 3), RGB888(0xff, 0xff, 0x00));
-        graphics_set_palette((base_bezel + 4), RGB888(0x00, 0xff, 0x00));
-        graphics_set_palette((base_bezel + 5), RGB888(0x00, 0xff, 0xff));
-        graphics_set_palette((base_bezel + 6), RGB888(0x00, 0x00, 0xff));
-        graphics_set_palette((base_bezel + 7), RGB888(0xff, 0x00, 0xff));
-    }
+    graphics_set_palette((base_bezel + 0), RGB888(0xff, 0xff, 0xff));
+    graphics_set_palette((base_bezel + 1), RGB888(0x00, 0x00, 0x00));
+    graphics_set_palette((base_bezel + 2), RGB888(0xff, 0x00, 0x00));
+    graphics_set_palette((base_bezel + 3), RGB888(0xff, 0xff, 0x00));
+    graphics_set_palette((base_bezel + 4), RGB888(0x00, 0xff, 0x00));
+    graphics_set_palette((base_bezel + 5), RGB888(0x00, 0xff, 0xff));
+    graphics_set_palette((base_bezel + 6), RGB888(0x00, 0x00, 0xff));
+    graphics_set_palette((base_bezel + 7), RGB888(0xff, 0x00, 0xff));
 }
 
 uint_fast32_t frames = 0;
@@ -1276,7 +1274,7 @@ int __time_critical_func(main)() {
             graphics_set_mode(GRAPHICSMODE_ASPECT);
             uint8_t* screen = (uint8_t*)SCREEN;
             for (int i = 0; i < sizeof(bezel); ++i) {
-                screen[i] = (bezel[i] >> 4) - 4 + base_bezel;
+                screen[i] = bezel[i] + base_bezel;
             }
         } else {
             graphics_set_buffer((uint8_t *)SCREEN, SV_W, SV_H);
@@ -1287,6 +1285,10 @@ int __time_critical_func(main)() {
         settings.aspect_ratio = false;
         graphics_set_buffer((uint8_t *)SCREEN, 240, 200);
         graphics_set_mode(GRAPHICSMODE_DEFAULT);
+        uint8_t* screen = (uint8_t*)SCREEN;
+        for (int i = 0; i < sizeof(bezel); ++i) {
+            screen[i] = bezel[i] + base_bezel;
+        }
 #endif
 
         start_time = time_us_64();
@@ -1325,7 +1327,7 @@ int __time_critical_func(main)() {
                 if (settings.aspect_ratio) {
                     uint8_t* screen = (uint8_t*)SCREEN;
                     for (int i = 0; i < sizeof(bezel); ++i) {
-                        screen[i] = (bezel[i] >> 4) - 4 + base_bezel;
+                        screen[i] = bezel[i] + base_bezel;
                     }
                 }
             }
