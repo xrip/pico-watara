@@ -76,6 +76,8 @@ bool swap_ab = false;
 
 void gamepad1_update() {
     nespad_read();
+
+    if ((nespad_state & DPAD_DOWN) && (nespad_state & DPAD_UP)) nespad_state = 0;
     
     if (settings.swap_ab) {
         gamepad1.bits.b = keyboard.bits.a || (nespad_state & DPAD_A) != 0;
