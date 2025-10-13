@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-struct input_bits_t {
+typedef struct input_bits_s {
     bool right: true;
     bool left: true;
     bool down: true;
@@ -12,7 +12,7 @@ struct input_bits_t {
     bool a: true;
     bool select: true;
     bool start: true;
-};
+} input_bits_t;
 
 typedef struct kbd_s {
     input_bits_t bits;
@@ -24,4 +24,19 @@ typedef union {
     uint8_t state;
 } controller;
 
+typedef struct __attribute__((__packed__)) {
+    uint8_t version;
+    bool swap_ab;
+    bool aspect_ratio;
+    uint8_t ghosting;
+    uint8_t palette;
+    uint8_t save_slot;
+    uint32_t rgb0;
+    uint32_t rgb1;
+    uint32_t rgb2;
+    uint32_t rgb3;
+    bool instant_ignition;
+} SETTINGS;
+
 extern controller gamepad1;
+extern SETTINGS settings;

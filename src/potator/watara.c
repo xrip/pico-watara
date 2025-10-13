@@ -18,6 +18,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../main.h"
+
 static M6502 m6502_registers;
 static BOOL irq = FALSE;
 extern uint8 regs[0x2000];
@@ -76,10 +78,28 @@ BOOL supervision_load(const uint8 *rom, uint32 romSize)
     return TRUE;
 }
 
-static uint8_t rich_screen[200*240] = { 0 }; // current extended value
-
-static inline uint8_t __time_critical_func(convert_to_rich_format)(uint8_t v) {
-    return ((v & 1) ? 0b1111 : 0) | (((v >> 1) & 1) ? 0b11110000: 0);
+static inline uint8_t __time_critical_func(convert_to_rich_format)(uint8_t v2b, uint8_t pre_v, uint8_t ghost_speed, uint8_t ghosting) {
+    // новый код палитры
+    v2b &= 0b11;
+    // старый код палитры
+    uint8_t p2b = (pre_v >> 5) & 0b11;
+    // старый код интенсивности
+    uint8_t pre_v5 = pre_v & 0b11111;
+    if (p2b == v2b) { // коды палитры совпадают
+        uint8_t new_v = (v2b << 5) | 0b11111; // стремимся к этому значению
+        uint8_t v = (pre_v5 << ghost_speed) | ghosting | (v2b << 5);
+        if (v > new_v) v = new_v; // как-то получилось больше... как?
+        return v;
+    }
+    if (settings.instant_ignition && p2b < v2b) { // старый код палитры меньше, т.е. это "зажигание"
+        return (v2b << 5) | 0b11111;; // симулируем мгновенное зажигание
+    }
+    if (pre_v5 != 0) { // код палитры сменился
+        // уменьшаем интенсивность, но не меняем пока код самой палитры
+        return (pre_v5 >> ghost_speed) | (pre_v & 0b1100000); 
+    }
+    // код палитры сменился, а интенсивность старой пришла в ноль
+    return (v2b << 5) | ghosting; // возвращаем новый код палитры и минимальное дополнение перед сдвигом
 }
 
 void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, uint32 backbufferWidth, BOOL skipFrame, uint8_t ghosting)
@@ -96,75 +116,51 @@ void __time_critical_func(supervision_exec_ex)(uint8 *backbuffer, uint32 backbuf
         if (size > SV_W)
             size = SV_W; // 192: Chimera, Matta Blatta, Tennis Pro '92
 
-        uint8_t ghost_speed = ghosting < 7 ? (7 - ghosting) : 1;
-        ghosting = (0xFF >> (ghosting + 1)); // mask to extend values
         uint8_t* p_out = backbuffer;
-        uint8_t* p_rich = rich_screen;
-        for (uint32 i = 0; i < SV_H; ++i) {
-            if (scanline >= 0x1fe0) {
-                scanline -= 0x1fe0; // SSSnake
+        if (!ghosting) {
+            for (uint32 i = 0; i < SV_H; ++i) {
+                if (scanline >= 0x1fe0) {
+                    scanline -= 0x1fe0; // SSSnake
+                }
+                uint8 *vram_line = upperRam + scanline;
+                uint8 x = 0;
+                uint8 b = *vram_line++;
+                if (innerx) {
+                    b >>= innerx * 2;
+                }
+                #pragma GCC unroll 4
+                while (x < size) {
+                    p_out[x++] = (b & 0b11) << 5; b >>= 2;
+                    p_out[x++] = (b & 0b11) << 5; b >>= 2;
+                    p_out[x++] = (b & 0b11) << 5; b >>= 2;
+                    p_out[x++] = (b & 0b11) << 5; b = *vram_line++;
+                }
+                p_out += backbufferWidth;
+                scanline += 0x30;
             }
-            uint8 *vram_line = upperRam + scanline;
-            uint8 x = 0;
-            uint8 b = *vram_line++;
-            if (innerx) {
-                b >>= innerx * 2;
+        } else {
+            uint8_t ghost_speed = ghosting < 6 ? (6 - ghosting) : 1;
+            ghosting = (0xFF >> (ghosting + 2)); // mask to extend values
+            for (uint32 i = 0; i < SV_H; ++i) {
+                if (scanline >= 0x1fe0) {
+                    scanline -= 0x1fe0; // SSSnake
+                }
+                uint8 *vram_line = upperRam + scanline;
+                uint8 x = 0;
+                uint8 b = *vram_line++;
+                if (innerx) {
+                    b >>= innerx * 2;
+                }
+                #pragma GCC unroll 4
+                while (x < size) {
+                    p_out[x++] = convert_to_rich_format(b, p_out[x], ghost_speed, ghosting); b >>= 2;
+                    p_out[x++] = convert_to_rich_format(b, p_out[x], ghost_speed, ghosting); b >>= 2;
+                    p_out[x++] = convert_to_rich_format(b, p_out[x], ghost_speed, ghosting); b >>= 2;
+                    p_out[x++] = convert_to_rich_format(b, p_out[x], ghost_speed, ghosting); b = *vram_line++;
+                }
+                p_out += backbufferWidth;
+                scanline += 0x30;
             }
-#pragma GCC unroll 4
-            while (x < size) {
-                uint8_t new_v = convert_to_rich_format(b); b >>= 2;
-                uint8_t pre_v = p_rich[x];
-                uint8_t v;
-                if (new_v > pre_v) {
-                    v = (pre_v << ghost_speed) | ghosting;
-                    if (v > new_v) v = new_v;
-                } else {
-                    v = pre_v >> ghost_speed;
-                    if (v < new_v) v = new_v;
-                }
-                p_rich[x] = v;
-                // back to output style format -> 0bxy0000
-                p_out[x++] = (((v >> 4) ? 0b10 : 0) | ((v & 0b1111) ? 0b01 : 0)) << 4;
-                
-                new_v = convert_to_rich_format(b); b >>= 2;
-                pre_v = p_rich[x];
-                if (new_v > pre_v) {
-                    v = (pre_v << ghost_speed) | ghosting;
-                    if (v > new_v) v = new_v;
-                } else {
-                    v = pre_v >> ghost_speed;
-                    if (v < new_v) v = new_v;
-                }
-                p_rich[x] = v;
-                p_out[x++] = (((v >> 4) ? 0b10 : 0) | ((v & 0b1111) ? 0b01 : 0)) << 4;
-
-                new_v = convert_to_rich_format(b); b >>= 2;
-                pre_v = p_rich[x];
-                if (new_v > pre_v) {
-                    v = (pre_v << ghost_speed) | ghosting;
-                    if (v > new_v) v = new_v;
-                } else {
-                    v = pre_v >> ghost_speed;
-                    if (v < new_v) v = new_v;
-                }
-                p_rich[x] = v;
-                p_out[x++] = (((v >> 4) ? 0b10 : 0) | ((v & 0b1111) ? 0b01 : 0)) << 4;
-
-                new_v = convert_to_rich_format(b); b = *vram_line++;
-                pre_v = p_rich[x];
-                if (new_v > pre_v) {
-                    v = (pre_v << ghost_speed) | ghosting;
-                    if (v > new_v) v = new_v;
-                } else {
-                    v = pre_v >> ghost_speed;
-                    if (v < new_v) v = new_v;
-                }
-                p_rich[x] = v;
-                p_out[x++] = (((v >> 4) ? 0b10 : 0) | ((v & 0b1111) ? 0b01 : 0)) << 4;
-            }
-            p_rich += backbufferWidth;
-            p_out += backbufferWidth;
-            scanline += 0x30;
         }
     }
     if (Rd6502(0x2026) & 0x01)
