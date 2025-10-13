@@ -46,19 +46,6 @@ semaphore vga_start_semaphore;
 uint8_t SCREEN[200][240];
 uint8_t TEXT_BUFFER[TEXTMODE_COLS*TEXTMODE_ROWS*2];
 
-typedef struct __attribute__((__packed__)) {
-    uint8_t version;
-    bool swap_ab;
-    bool aspect_ratio;
-    uint8_t ghosting;
-    uint8_t palette;
-    uint8_t save_slot;
-    uint32_t rgb0;
-    uint32_t rgb1;
-    uint32_t rgb2;
-    uint32_t rgb3;
-} SETTINGS;
-
 SETTINGS settings = {
     .version = 1,
     .swap_ab = false,
@@ -69,7 +56,8 @@ SETTINGS settings = {
     .rgb0 = 0xCCFFFF,
     .rgb1 = 0xFFB266,
     .rgb2 = 0xCC0066,
-    .rgb3 = 0x663300
+    .rgb3 = 0x663300,
+    .instant_ignition = false
 };
 
 uint32_t rgb0;
@@ -971,6 +959,7 @@ const MenuItem menu_items[] = {
 #if VGA
         { "Keep aspect ratio: %s",     ARRAY, &settings.aspect_ratio,  nullptr, 1, {"NO ",       "YES"}},
 #endif
+        { "Instant ignition simulation: %s",     ARRAY, &settings.instant_ignition,  nullptr, 1, {"NO ",       "YES"}},
 #if SOFTTV
         { "" },
         { "TV system %s", ARRAY, &tv_out_mode.tv_system, nullptr, 1, { "PAL ", "NTSC" } },

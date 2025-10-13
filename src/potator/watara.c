@@ -18,6 +18,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../main.h"
+
 static M6502 m6502_registers;
 static BOOL irq = FALSE;
 extern uint8 regs[0x2000];
@@ -89,9 +91,12 @@ static inline uint8_t __time_critical_func(convert_to_rich_format)(uint8_t v2b, 
         if (v > new_v) v = new_v; // как-то получилось больше... как?
         return v;
     }
-    if (pre_v5 != 0) { 
-        // код палитры сменился, уменьшаем интенсивность, но не меняем пока код самой палитры
-        return (pre_v5 >> ghost_speed) | (pre_v & 0b1100000);
+    if (settings.instant_ignition && p2b < v2b) { // старый код палитры меньше, т.е. это "зажигание"
+        return (v2b << 5) | 0b11111;; // симулируем мгновенное зажигание
+    }
+    if (pre_v5 != 0) { // код палитры сменился
+        // уменьшаем интенсивность, но не меняем пока код самой палитры
+        return (pre_v5 >> ghost_speed) | (pre_v & 0b1100000); 
     }
     // код палитры сменился, а интенсивность старой пришла в ноль
     return (v2b << 5) | ghosting; // возвращаем новый код палитры и минимальное дополнение перед сдвигом
